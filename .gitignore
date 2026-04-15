@@ -95,3 +95,4 @@ vue3/src/plugins
 docs/reference/
 .idea/vcs.xml
 .idea/db-forest-config.xml
+uv.lock
