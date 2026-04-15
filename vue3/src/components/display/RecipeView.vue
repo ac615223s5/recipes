@@ -79,7 +79,7 @@
                                                      class="flex-column mb-auto mt-2 float-right"></recipe-context-menu>
                             </div>
                             <p>
-                                {{ $t('created_by') }} {{ recipe.createdBy.displayName }} ({{ DateTime.fromJSDate(recipe.createdAt).toLocaleString(DateTime.DATE_SHORT) }})
+                                {{ $t('created_by') }} {{ recipe.createdBy.displayName }} ({{ DateTime.fromJSDate(recipe.createdAt).toFormat('yyyy-MM-dd') }})
                             </p>
                             <p>
                                 <i>{{ recipe.description }}</i>
@@ -163,7 +163,7 @@
                         <v-card
                             variant="outlined"
                             :title="$t('Created')"
-                            :subtitle="DateTime.fromJSDate(recipe.createdAt).toLocaleString(DateTime.DATETIME_MED)"
+                            :subtitle="DateTime.fromJSDate(recipe.createdAt).toFormat('yyyy-MM-dd HH:mm')"
                             prepend-icon="$create"
                             :to="(useUserPreferenceStore().isAuthenticated) ? {name: 'SearchPage', query: {createdon: DateTime.fromJSDate(recipe.createdAt).toISODate()}} : undefined">
                         </v-card>
@@ -172,7 +172,7 @@
                         <v-card
                             variant="outlined"
                             :title="$t('Updated')"
-                            :subtitle="DateTime.fromJSDate(recipe.updatedAt).toLocaleString(DateTime.DATETIME_MED)"
+                            :subtitle="DateTime.fromJSDate(recipe.updatedAt).toFormat('yyyy-MM-dd HH:mm')"
                             prepend-icon="$edit"
                             :to="(useUserPreferenceStore().isAuthenticated) ?  {name: 'SearchPage', query: {updatedon: DateTime.fromJSDate(recipe.updatedAt).toISODate()}}: undefined">
                         </v-card>

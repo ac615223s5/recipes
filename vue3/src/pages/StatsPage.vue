@@ -39,15 +39,15 @@
                                         <strong>{{ item.title }}</strong>
                                     </div>
                                     <div class="text-caption text-disabled">
-                                        {{ DateTime.fromJSDate(item.startDate).toLocaleString(DateTime.DATE_MED) }}
+                                        {{ DateTime.fromJSDate(item.startDate).toFormat('yyyy-MM-dd') }}
                                         -
-                                        {{ DateTime.fromJSDate(item.endDate).toLocaleString(DateTime.DATE_MED) }}
+                                        {{ DateTime.fromJSDate(item.endDate).toFormat('yyyy-MM-dd') }}
                                         <br>
                                         ({{ item.daysInPeriod }} day(s))
                                     </div>
                                 </template>
                                 <template v-else>
-                                    {{ DateTime.fromJSDate(item.createdAt).toLocaleString(DateTime.DATE_MED) }}
+                                    {{ DateTime.fromJSDate(item.createdAt).toFormat('yyyy-MM-dd') }}
                                 </template>
                             </template>
 
@@ -313,7 +313,7 @@ const groupedCookLogs = computed<GroupedCookLog[]>(() => {
 
         if (groupBy.value === 'day') {
             periodKey = date.toISOString().split('T')[0]
-            title = DateTime.fromJSDate(date).toLocaleString(DateTime.DATE_FULL)
+            title = DateTime.fromJSDate(date).toFormat('cccc, yyyy-MM-dd')
             startDate = new Date(date)
             startDate.setHours(0, 0, 0, 0)
             endDate = new Date(date)
@@ -321,7 +321,7 @@ const groupedCookLogs = computed<GroupedCookLog[]>(() => {
         } else if (groupBy.value === 'week') {
             const weekStart = getWeekStart(date)
             periodKey = getWeekKey(date)
-            title = `Week of ${DateTime.fromJSDate(weekStart).toLocaleString(DateTime.DATE_MED)}`
+            title = `Week of ${DateTime.fromJSDate(weekStart).toFormat('yyyy-MM-dd')}`
             startDate = weekStart
             endDate = new Date(weekStart)
             endDate.setDate(endDate.getDate() + 6)

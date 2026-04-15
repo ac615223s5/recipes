@@ -65,19 +65,19 @@
                             </v-list-item-title>
                             <v-list-item-subtitle v-if="e.completedAt">
                                 <v-icon icon="fa-solid fa-check" size="small" color="success"></v-icon>
-                                {{ $t('Completed') }} {{ DateTime.fromJSDate(e.completedAt).toLocaleString(DateTime.DATETIME_SHORT) }}
+                                {{ $t('Completed') }} {{ DateTime.fromJSDate(e.completedAt).toFormat('yyyy-MM-dd HH:mm') }}
                             </v-list-item-subtitle>
                             <v-list-item-subtitle v-if="e.listRecipe && e.listRecipeData.recipe">
                                 {{ e.listRecipeData.servings }} x {{ e.listRecipeData.recipeData.name }}
                             </v-list-item-subtitle>
                             <v-list-item-subtitle v-if="e.listRecipe && e.listRecipeData.mealplan">
-                                {{ e.listRecipeData.mealPlanData.mealType.name }} {{ DateTime.fromJSDate(e.listRecipeData.mealPlanData.fromDate).toLocaleString(DateTime.DATE_SHORT) }}
+                                {{ e.listRecipeData.mealPlanData.mealType.name }} {{ DateTime.fromJSDate(e.listRecipeData.mealPlanData.fromDate).toFormat('yyyy-MM-dd') }}
                             </v-list-item-subtitle>
                             <v-list-item-subtitle>
-                                {{ e.createdBy.displayName }} - {{ DateTime.fromJSDate(e.createdAt).toLocaleString(DateTime.DATETIME_SHORT) }}
+                                {{ e.createdBy.displayName }} - {{ DateTime.fromJSDate(e.createdAt).toFormat('yyyy-MM-dd HH:mm') }}
                             </v-list-item-subtitle>
                             <v-list-item-subtitle v-if="isDelayed(e)" class="text-info font-weight-bold">
-                                {{ $t('PostponedUntil') }} {{ DateTime.fromJSDate(e.delayUntil!).toLocaleString(DateTime.DATETIME_SHORT) }}
+                                {{ $t('PostponedUntil') }} {{ DateTime.fromJSDate(e.delayUntil!).toFormat('yyyy-MM-dd HH:mm') }}
                             </v-list-item-subtitle>
                             <v-list-item-subtitle v-if="e.shoppingLists.length > 0" class="text-info font-weight-bold">
                                 <shopping-lists-bar :shopping-lists="e.shoppingLists"></shopping-lists-bar>

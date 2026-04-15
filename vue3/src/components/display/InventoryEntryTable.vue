@@ -19,7 +19,7 @@
         <template #item.expires="{item}">
             <template v-if="item.expires ">
                 <v-chip size="small" label :color="(item.expires < DateTime.now() ? 'error' : 'success')">
-                    {{ DateTime.fromJSDate(item.expires).toLocaleString(DateTime.DATE_MED) }}
+                    {{ DateTime.fromJSDate(item.expires).toFormat('yyyy-MM-dd') }}
                 </v-chip>
             </template>
         </template>

@@ -37,7 +37,7 @@
                 <v-alert class="mt-2" v-if="!loading && !fileApiLoading && Object.keys(editingObj).length > 0 && Number(editingObj.fileSizeKb)">
                     <p v-if="Number(editingObj.fileSizeKb)">{{ $n(editingObj.fileSizeKb / 1000) }} MB <br/></p>
                     <p v-if="editingObj.createdBy"> {{ editingObj.createdBy.displayName }}</p>
-                    <p v-if="editingObj.createdAt"> {{ DateTime.fromJSDate(editingObj.createdAt).toLocaleString(DateTime.DATETIME_SHORT) }}</p>
+                    <p v-if="editingObj.createdAt"> {{ DateTime.fromJSDate(editingObj.createdAt).toFormat('yyyy-MM-dd HH:mm') }}</p>
                 </v-alert>
 
             </v-form>

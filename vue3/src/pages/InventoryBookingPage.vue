@@ -44,7 +44,7 @@
                                     <v-chip size="small" label color="warning" class="me-2" prepend-icon="fa-solid fa-barcode">{{inventoryEntry.code}}</v-chip>
                                     <v-chip size="small" label color="info" class="me-2" :prepend-icon="TInventoryLocation.icon">{{inventoryEntry.inventoryLocation.name}}</v-chip>
                                     <v-chip size="small" label :color="(inventoryEntry.expires < DateTime.now() ? 'error' : 'success')">
-                                        {{ DateTime.fromJSDate(inventoryEntry.expires).toLocaleString(DateTime.DATE_MED) }}
+                                        {{ DateTime.fromJSDate(inventoryEntry.expires).toFormat('yyyy-MM-dd') }}
                                     </v-chip>
                                 </v-card-text>
                             </v-card>
@@ -107,13 +107,13 @@
                                 <v-chip size="small" label color="warning" class="me-2" prepend-icon="fa-solid fa-barcode">{{item.code}}</v-chip>
                                     <v-chip size="small" label color="info" class="me-2" :prepend-icon="TInventoryLocation.icon">{{item.inventoryLocation.name}}</v-chip>
                                     <v-chip size="small" label :color="(item.expires < DateTime.now() ? 'error' : 'success')">
-                                        {{ DateTime.fromJSDate(item.expires).toLocaleString(DateTime.DATE_MED) }}
+                                        {{ DateTime.fromJSDate(item.expires).toFormat('yyyy-MM-dd') }}
                                     </v-chip>
                             </template>
                             <template #item.expires="{item}">
                                 <template v-if="item.expires ">
                                     <v-chip size="small" label :color="(item.expires < DateTime.now() ? 'error' : 'success')">
-                                        {{ DateTime.fromJSDate(item.expires).toLocaleString(DateTime.DATE_MED) }}
+                                        {{ DateTime.fromJSDate(item.expires).toFormat('yyyy-MM-dd') }}
                                     </v-chip>
                                 </template>
                             </template>
@@ -167,7 +167,7 @@
                     <p class="text-disabled mt-4">{{ $t('Expires') }}</p>
                     <p>
                         <v-chip label :color="(bookingConfirmEntry.expires < DateTime.now() ? 'error' : 'success')">
-                            {{ DateTime.fromJSDate(bookingConfirmEntry.expires).toLocaleString(DateTime.DATE_MED) }}
+                            {{ DateTime.fromJSDate(bookingConfirmEntry.expires).toFormat('yyyy-MM-dd') }}
                         </v-chip>
                     </p>
                 </template>

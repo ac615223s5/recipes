@@ -39,7 +39,7 @@
                         <v-card-text>
                             {{ $n(model.fileSizeKb / 1000) }} MB <br/>
                             {{ model.createdBy.displayName }} <br/>
-                            {{ DateTime.fromJSDate(model.createdAt).toLocaleString(DateTime.DATETIME_SHORT) }}
+                            {{ DateTime.fromJSDate(model.createdAt).toFormat('yyyy-MM-dd HH:mm') }}
                         </v-card-text>
 
                         <v-img class="mr-4 ml-4" max-height="50vh" rounded :src="model.preview"></v-img>
@@ -126,7 +126,7 @@ const tableHeaders = ref([
     {title: t('Quick actions'), key: 'actions'},
     {title: t('Preview'), key: 'preview'},
     {title: t('Name'), value: 'name'},
-    {title: t('created_on'), key: 'createdAt', value: item => DateTime.fromJSDate(item.createdAt).toLocaleString(DateTime.DATETIME_MED)},
+    {title: t('created_on'), key: 'createdAt', value: item => DateTime.fromJSDate(item.createdAt).toFormat('yyyy-MM-dd HH:mm')},
     {title: t('created_by'), value: 'createdBy.displayName',},
 ])
 

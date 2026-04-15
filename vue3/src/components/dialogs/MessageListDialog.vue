@@ -52,7 +52,7 @@
                     >
 
                         <template v-slot:item.createdAt="{ value }">
-                            {{ DateTime.fromSeconds(value).toLocaleString(DateTime.DATETIME_MED) }}
+                            {{ DateTime.fromSeconds(value).toFormat('yyyy-MM-dd HH:mm') }}
                         </template>
 
                         <template v-slot:item.type="{ value }">
@@ -90,7 +90,7 @@
     <v-dialog v-model="showDetailDialog" max-width="50vw">
         <v-card>
             <v-card-title>
-                {{$t('Created')}} <small>{{ DateTime.fromSeconds(detailItem.createdAt).toLocaleString(DateTime.DATETIME_MED) }}</small>
+                {{$t('Created')}} <small>{{ DateTime.fromSeconds(detailItem.createdAt).toFormat('yyyy-MM-dd HH:mm') }}</small>
             </v-card-title>
             <v-divider></v-divider>
             <v-card-text>

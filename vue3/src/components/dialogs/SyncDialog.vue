@@ -12,7 +12,7 @@
                     <v-chip label v-if="syncLog.status == 'SUCCESS'" color="success">{{ $t('Success') }}</v-chip>
                     <v-chip label v-if="syncLog.status != 'SUCCESS'" color="danger">{{ $t('Error') }}</v-chip>
 
-                    <v-textarea auto-grow max-rows="10" v-model="syncLog.msg" :hint="DateTime.fromJSDate(syncLog.createdAt).toLocaleString(DateTime.DATETIME_SHORT)" persistent-hint readonly></v-textarea>
+                    <v-textarea auto-grow max-rows="10" v-model="syncLog.msg" :hint="DateTime.fromJSDate(syncLog.createdAt).toFormat('yyyy-MM-dd HH:mm')" persistent-hint readonly></v-textarea>
                 </template>
 
             </v-card-text>

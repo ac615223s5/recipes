@@ -407,7 +407,7 @@ export const useShoppingStore = defineStore(_STORE_ID, () => {
             if (object.listRecipeData.recipeData != null) {
                 groupingKey = object.listRecipeData.recipeData.name
                 if (object.listRecipeData.mealPlanData != null) {
-                    groupingKey += ' - ' + object.listRecipeData.mealPlanData.mealType.name + ' - ' + DateTime.fromJSDate(object.listRecipeData.mealPlanData.fromDate).toLocaleString(DateTime.DATE_SHORT)
+                    groupingKey += ' - ' + object.listRecipeData.mealPlanData.mealType.name + ' - ' + DateTime.fromJSDate(object.listRecipeData.mealPlanData.fromDate).toFormat('yyyy-MM-dd')
                 }
             }
         }

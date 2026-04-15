@@ -20,7 +20,7 @@
         </template>
 
         <template #item.createdAt="{item}">
-            {{ DateTime.fromJSDate(item.createdAt).toLocaleString(DateTime.DATETIME_MED) }}
+            {{ DateTime.fromJSDate(item.createdAt).toFormat('yyyy-MM-dd HH:mm') }}
         </template>
 
         <template #item.amount="{item}">

@@ -23,9 +23,9 @@ export default createVuetify({
             maxWidth: '1400px'
         },
         // always localize the date display of DateInputs
-        // VDateInput: {
-        //     displayFormat: (date: Date) => DateTime.fromJSDate(date).toLocaleString()
-        // },
+        VDateInput: {
+            displayFormat: (date: Date) => DateTime.fromJSDate(date).toFormat('yyyy-MM-dd')
+        },
         // always use color for switches to properly see if enabled or not
         VSwitch: {
             color: 'primary'

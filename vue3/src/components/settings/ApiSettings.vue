@@ -49,7 +49,7 @@
             <v-list-item v-for="at in accessTokenList">
                 <v-list-item-title>{{ at.token }}</v-list-item-title>
                 <v-list-item-subtitle>Scope {{ at.scope }}
-                    Expires {{ DateTime.fromJSDate(at.expires).toLocaleString(DateTime.DATE_FULL) }}
+                    Expires {{ DateTime.fromJSDate(at.expires).toFormat('yyyy-MM-dd') }}
                 </v-list-item-subtitle>
                 <template #append>
                     <v-chip color="error" class="me-2" v-if="at.expires < DateTime.now().toJSDate()">Expired</v-chip>

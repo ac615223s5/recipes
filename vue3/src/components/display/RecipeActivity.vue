@@ -73,7 +73,7 @@
                             <v-rating density="comfortable" size="x-small" color="tandoor" v-model="c.rating" half-increments readonly
                                       v-if="c.rating != undefined" style="overflow: hidden"></v-rating>
                             <v-spacer></v-spacer>
-                            <v-tooltip location="top" :text="DateTime.fromJSDate(c.createdAt).toLocaleString(DateTime.DATETIME_MED)" v-if="c.createdAt != undefined">
+                            <v-tooltip location="top" :text="DateTime.fromJSDate(c.createdAt).toFormat('yyyy-MM-dd HH:mm')" v-if="c.createdAt != undefined">
                                 <template v-slot:activator="{ props }">
                                     <span v-bind="props">{{ DateTime.fromJSDate(c.createdAt).toRelative({style: 'narrow'}) }}</span>
                                 </template>

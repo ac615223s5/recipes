@@ -107,12 +107,7 @@ const meal_plan_grid = computed(() => {
         grid.push({
             date: grid_day_date,
             create_default_date: grid_day_date.toISODate(), // improve meal plan edit modal to do formatting itself and accept dates
-            date_label: grid_day_date.toLocaleString({
-                weekday: 'short',
-                month: '2-digit',
-                day: '2-digit',
-                year: '2-digit',
-            }),
+            date_label: grid_day_date.toFormat('yyyy-MM-dd'),
             plan_entries: useMealPlanStore().planList.filter((m: MealPlan) => ((DateTime.fromJSDate(m.fromDate).startOf('day') <= grid_day_date.startOf('day')) && (DateTime.fromJSDate((m.toDate != undefined) ? m.toDate : m.fromDate).startOf('day') >= grid_day_date.startOf('day')))),
         } as MealPlanGridItem)
     }

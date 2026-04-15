@@ -213,7 +213,7 @@ const infoRow = computed(() => {
             }
 
             if (e.listRecipeData.mealplan != null) {
-                let meal_plan_entry = (e.listRecipeData.mealPlanData.mealType.name.substring(0, 8) || '') + (e.listRecipeData.mealPlanData.mealType.name.length > 8 ? '..' : '') + ' (' + DateTime.fromJSDate(e.listRecipeData.mealPlanData.fromDate).toLocaleString(DateTime.DATE_SHORT) + ')'
+                let meal_plan_entry = (e.listRecipeData.mealPlanData.mealType.name.substring(0, 8) || '') + (e.listRecipeData.mealPlanData.mealType.name.length > 8 ? '..' : '') + ' (' + DateTime.fromJSDate(e.listRecipeData.mealPlanData.fromDate).toFormat('yyyy-MM-dd') + ')'
                 if (meal_pans.indexOf(meal_plan_entry) === -1) {
                     meal_pans.push(meal_plan_entry)
                 }

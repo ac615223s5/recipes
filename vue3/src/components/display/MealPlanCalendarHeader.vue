@@ -2,8 +2,8 @@
     <div>
         <v-row class="pa-2">
             <v-col md="8" cols="12" class="align-center d-none d-md-flex text-h5">
-                {{ DateTime.fromJSDate(props.headerProps?.displayFirstDate).toLocaleString(DateTime.DATE_MED) }} -
-                {{ DateTime.fromJSDate(props.headerProps?.displayLastDate).toLocaleString(DateTime.DATE_MED) }}
+                {{ DateTime.fromJSDate(props.headerProps?.displayFirstDate).toFormat('yyyy-MM-dd') }} -
+                {{ DateTime.fromJSDate(props.headerProps?.displayLastDate).toFormat('yyyy-MM-dd') }}
             </v-col>
             <v-col md="4" cols="12">
                 <v-date-input
