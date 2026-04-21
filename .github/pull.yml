@@ -1,0 +1,5 @@
+version: "1"
+rules:
+  - base: develop
+    upstream: TandoorRecipes:master # change `wei` to the owner of upstream repo
+    mergeMethod: merge
