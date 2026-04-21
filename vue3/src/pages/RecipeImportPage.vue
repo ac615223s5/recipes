@@ -390,6 +390,23 @@
                                     </v-row>
 
                                 </v-card>
+
+                                <v-card class="mt-4">
+                                    <v-card-title>{{ $t('Recipe_JSON') }}</v-card-title>
+                                    <v-card-text>
+                                        <v-textarea
+                                            v-model="recipeJson"
+                                            label="JSON"
+                                            rows="15"
+                                            monospace
+                                            hint="Edit the recipe data before importing. Invalid JSON will be highlighted."
+                                            persistent-hint
+                                            :error-messages="jsonError"
+                                        ></v-textarea>
+                                        <v-btn @click="parseJson" color="primary" class="mt-2">{{ $t('Apply_JSON') }}</v-btn>
+                                    </v-card-text>
+                                </v-card>
+
                                 <v-stepper-actions>
                                     <template #prev>
                                         <v-btn @click="stepper = 'step_editor'">{{ $t('Back') }}</v-btn>
@@ -677,6 +694,8 @@ const bookmarkletToken = ref("")
 const importResponse = ref({} as RecipeFromSourceResponse)
 const keywordSelect = ref<null | SourceImportKeyword>(null)
 const editingIngredient = ref({} as SourceImportIngredient)
+const recipeJson = ref("")
+const jsonError = ref("")
 
 // stuff for ingredient mover, find some better solution at some point (finally merge importer/editor?)
 const editingIngredientIndex = ref(0)
@@ -718,6 +737,12 @@ function loadRecipeFromUrl(recipeFromSourceRequest: RecipeFromSource) {
         }
 
         importResponse.value = r
+
+        // populate JSON editor
+        if (importResponse.value.recipe) {
+            recipeJson.value = JSON.stringify(importResponse.value.recipe, null, 2)
+            jsonError.value = ""
+        }
 
         if (importResponse.value.duplicates && importResponse.value.duplicates.length > 0) {
             stepper.value = 'duplicates'
@@ -763,6 +788,12 @@ function loadRecipeFromAiImport() {
             loading.value = false
             importResponse.value = r
 
+            // populate JSON editor
+            if (importResponse.value.recipe) {
+                recipeJson.value = JSON.stringify(importResponse.value.recipe, null, 2)
+                jsonError.value = ""
+            }
+
             if (!importResponse.value.error) {
                 if (importResponse.value.images && importResponse.value.images.length > 0) {
                     stepper.value = 'image_chooser'
@@ -797,6 +828,20 @@ function recLoadImportLog(importLogId: number) {
     }).catch(err => {
         useMessageStore().addError(ErrorMessageType.FETCH_ERROR, err)
     })
+}
+
+/**
+ * parse JSON from the editor and update the import response
+ */
+function parseJson() {
+    try {
+        const parsed = JSON.parse(recipeJson.value)
+        importResponse.value.recipe = parsed
+        jsonError.value = ""
+        useMessageStore().addMessage(MessageType.SUCCESS, t("JSON_updated"), 3000)
+    } catch (e) {
+        jsonError.value = (e as Error).message
+    }
 }
 
 /**
