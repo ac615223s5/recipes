@@ -2150,8 +2150,9 @@ class UnitConversionViewSet(LoggingMixin, viewsets.ModelViewSet):
         enum=[m[0] for m in PropertyType.CHOICES])
     ]
 ))
-class PropertyTypeViewSet(LoggingMixin, viewsets.ModelViewSet, DeleteRelationMixing):
+class PropertyTypeViewSet(LoggingMixin, MergeMixin, viewsets.ModelViewSet, DeleteRelationMixing):
     queryset = PropertyType.objects
+    model = PropertyType
     serializer_class = PropertyTypeSerializer
     permission_classes = [CustomIsUser & CustomTokenHasReadWriteScope]
     pagination_class = DefaultPagination

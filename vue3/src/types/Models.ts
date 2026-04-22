@@ -572,6 +572,7 @@ export const TPropertyType = {
 
     isPaginated: true,
     isAdvancedDelete: true,
+    isMerge: true,
     toStringKeys: ['name'],
 
     tableHeaders: [

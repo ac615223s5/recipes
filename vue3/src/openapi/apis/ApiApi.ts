@@ -2048,6 +2048,12 @@ export interface ApiPropertyTypeListRequest {
     pageSize?: number;
 }
 
+export interface ApiPropertyTypeMergeUpdateRequest {
+    id: number;
+    target: number;
+    propertyType: PropertyType;
+}
+
 export interface ApiPropertyTypeNullingListRequest {
     id: number;
     cache?: boolean;
@@ -15174,6 +15180,60 @@ export class ApiApi extends runtime.BaseAPI {
      */
     async apiPropertyTypeUpdate(requestParameters: ApiPropertyTypeUpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PropertyType> {
         const response = await this.apiPropertyTypeUpdateRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * logs request counts to redis cache total/per user/
+     */
+    async apiPropertyTypeMergeUpdateRaw(requestParameters: ApiPropertyTypeMergeUpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PropertyType>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling apiPropertyTypeMergeUpdate().'
+            );
+        }
+
+        if (requestParameters['target'] == null) {
+            throw new runtime.RequiredError(
+                'target',
+                'Required parameter "target" was null or undefined when calling apiPropertyTypeMergeUpdate().'
+            );
+        }
+
+        if (requestParameters['propertyType'] == null) {
+            throw new runtime.RequiredError(
+                'propertyType',
+                'Required parameter "propertyType" was null or undefined when calling apiPropertyTypeMergeUpdate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["Authorization"] = await this.configuration.apiKey("Authorization"); // ApiKeyAuth authentication
+        }
+
+        const response = await this.request({
+            path: `/api/property-type/{id}/merge/{target}/`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))).replace(`{${"target"}}`, encodeURIComponent(String(requestParameters['target']))),
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PropertyTypeToJSON(requestParameters['propertyType']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PropertyTypeFromJSON(jsonValue));
+    }
+
+    /**
+     * logs request counts to redis cache total/per user/
+     */
+    async apiPropertyTypeMergeUpdate(requestParameters: ApiPropertyTypeMergeUpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PropertyType> {
+        const response = await this.apiPropertyTypeMergeUpdateRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
