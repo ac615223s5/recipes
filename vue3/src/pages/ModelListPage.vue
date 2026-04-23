@@ -19,6 +19,9 @@
                         </div>
                     </template>
                     <template #append>
+                        <v-btn class="float-right mr-2" color="primary" variant="text" v-if="genericModel.model.name == 'Food' && useUserPreferenceStore().activeSpace.aiEnabled" @click="deduplicateFoods()" :loading="deduplicateLoading">
+                            {{ $t('FoodDeduplicate') }}
+                        </v-btn>
                         <v-btn class="float-right" icon="$create" color="create" v-if="!genericModel.model.disableCreate">
                             <i class="fa-solid fa-plus"></i>
                             <model-edit-dialog :close-after-create="false" :model="model"
@@ -163,8 +166,9 @@
 
 
 import {onBeforeMount, PropType, ref, watch} from "vue";
-import {ErrorMessageType, useMessageStore} from "@/stores/MessageStore";
+import {ErrorMessageType, MessageType, useMessageStore} from "@/stores/MessageStore";
 import {useI18n} from "vue-i18n";
+import {getCookie} from "@/utils/cookie";
 import {EditorSupportedModels, EditorSupportedTypes, GenericModel, getGenericModelFromString, Model, TInviteLink,} from "@/types/Models";
 import ModelEditDialog from "@/components/dialogs/ModelEditDialog.vue";
 import {useRoute, useRouter} from "vue-router";
@@ -172,7 +176,7 @@ import {useUserPreferenceStore} from "@/stores/UserPreferenceStore";
 import ModelMergeDialog from "@/components/dialogs/ModelMergeDialog.vue";
 import {VDataTableUpdateOptions} from "@/vuetify";
 import SyncDialog from "@/components/dialogs/SyncDialog.vue";
-import {ApiApi, ApiRecipeListRequest, Group, RecipeImport, Space, UserSpace} from "@/openapi";
+import {ApiApi, ApiRecipeListRequest, Group, RecipeImport, Space, UserSpace, Food, AiProvider} from "@/openapi";
 import {useTitle} from "@vueuse/core";
 import RecipeShareDialog from "@/components/dialogs/RecipeShareDialog.vue";
 import AddToShoppingDialog from "@/components/dialogs/AddToShoppingDialog.vue";
@@ -213,6 +217,7 @@ const batchEditDialog = ref(false)
 
 // data
 const loading = ref(false);
+const deduplicateLoading = ref(false)
 const items = ref([] as Array<any>)
 const itemCount = ref(0)
 
@@ -310,6 +315,65 @@ function leaveSpace(space: Space) {
                 loading.value = false
             })
         }
+    })
+}
+
+/**
+ * Fetch all foods and send to AI provider to identify duplicates
+ */
+function deduplicateFoods() {
+    deduplicateLoading.value = true
+
+    // Fetch AI providers to get the default one
+    let api = new ApiApi()
+    api.apiAiProviderList().then(providerResponse => {
+        const defaultProvider = providerResponse.results.find((p: AiProvider) => p.id === useUserPreferenceStore().activeSpace.aiDefaultProvider?.id)
+
+        if (!defaultProvider) {
+            useMessageStore().addError(ErrorMessageType.CREATE_ERROR, "No AI Provider selected")
+            deduplicateLoading.value = false
+            return
+        }
+
+        // Fetch all foods (handle pagination)
+        const allFoods: Food[] = []
+        const fetchAllFoods = (page: number = 1) => {
+            api.apiFoodList({page, pageSize: 200}).then(r => {
+                allFoods.push(...r.results)
+                if (r.results.length === 200) {
+                    // More pages available
+                    fetchAllFoods(page + 1)
+                } else {
+                    // All foods fetched, now call AI endpoint
+                    const foodNames = allFoods.map((f: Food) => f.name)
+
+                    fetch(`/api/ai-food-deduplicate/?provider=${defaultProvider.id!}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken'),
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ foods: foodNames }),
+                    }).then(response => response.json()).then(result => {
+                        console.log('Food deduplication results:', result)
+                        console.log('Groups of foods to merge:', result)
+                        useMessageStore().addMessage(MessageType.INFO, `AI identified ${result.length} groups of duplicate foods. Check console for details.`, 8000)
+                    }).catch(err => {
+                        console.error('Error during food deduplication:', err)
+                        useMessageStore().addError(ErrorMessageType.FETCH_ERROR, err)
+                    }).finally(() => {
+                        deduplicateLoading.value = false
+                    })
+                }
+            }).catch(err => {
+                useMessageStore().addError(ErrorMessageType.FETCH_ERROR, err)
+                deduplicateLoading.value = false
+            })
+        }
+        fetchAllFoods()
+    }).catch(err => {
+        useMessageStore().addError(ErrorMessageType.FETCH_ERROR, err)
+        deduplicateLoading.value = false
     })
 }
 

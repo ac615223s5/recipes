@@ -254,6 +254,7 @@
   "Fish (Fatty)": "Fish (Fatty)",
   "Fish (Lean)": "Fish (Lean)",
   "Food": "Food",
+  "FoodDeduplicate": "Deduplicate Foods",
   "FoodHelp": "Foods are the most important foundation of Tandoor. Together with units and their repective amounts they make about recipe ingredients. They can also be used for shopping, properties and much more. ",
   "FoodInherit": "Food Inheritable Fields",
   "FoodNotOnHand": "You do not have {food} on hand.",

@@ -56,11 +56,11 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import APIException, PermissionDenied
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.parsers import MultiPartParser
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer, BaseRenderer
 
 from rest_framework.response import Response
-from rest_framework.serializers import CharField, IntegerField, UUIDField
+from rest_framework.serializers import CharField, IntegerField, UUIDField, ListField, Serializer
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSetMixin
@@ -2963,6 +2963,119 @@ class AiStepSortView(APIView):
                 }
                 return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AiFoodDeduplicateView(APIView):
+    parser_classes = [JSONParser]
+    throttle_classes = [AiEndpointThrottle]
+    permission_classes = [CustomIsUser & CustomTokenHasReadWriteScope]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='provider', description='ID of the AI provider that should be used for this AI request', type=int),
+        ],
+        request=inline_serializer(name='FoodDeduplicateRequest', fields={'foods': ListField(child=CharField())}),
+        responses={200: {'description': 'List of lists containing food names that should be merged', 'content': {'application/json': {'example': [["tomato", "tomatoes", "cherry tomato"], ["onion", "onions"]]}}}}
+    )
+    def post(self, request, *args, **kwargs):
+        """
+        Analyze a list of food names and return groups of foods that should be merged as duplicates
+        """
+        if 'foods' not in request.data:
+            response = {
+                'error': True,
+                'msg': _('You must provide a list of food names to analyze for duplicates.'),
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+        if not request.query_params.get('provider', None) or not re.match(r'^(\d)+$', request.query_params.get('provider', None)):
+            response = {
+                'error': True,
+                'msg': _('You must select an AI provider to perform your request.'),
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+        if not can_perform_ai_request(request.space):
+            response = {
+                'error': True,
+                'msg': _("You don't have any credits remaining to use AI or AI features are not enabled for your space."),
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+        ai_provider = AiProvider.objects.filter(pk=request.query_params.get('provider')).filter(Q(space=request.space) | Q(space__isnull=True)).first()
+
+        litellm.callbacks = [AiCallbackHandler(request.space, request.user, ai_provider, AiLog.F_FOOD_DEDUPLICATE)]
+
+        foods = request.data['foods']
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"""You are given a list of food names from a recipe management application. Your task is to identify which foods are duplicates or variations of the same underlying food that should be merged.
+
+Analyze the list and group together foods that refer to the same or very similar items. Consider:
+- Plural vs singular forms (e.g., "tomato" and "tomatoes")
+- Different variations of the same food (e.g., "cherry tomato", "roma tomato", "tomato" could all be grouped)
+- Synonyms (e.g., "capsicum" and "bell pepper")
+- Minor spelling variations
+
+Return ONLY a JSON array of arrays, where each inner array contains food names that should be merged together. Do not include any explanation or text outside the JSON.
+
+Food list: {json.dumps(foods, ensure_ascii=False)}
+
+Example output format:
+[["tomato", "tomatoes", "cherry tomato"], ["onion", "onions", "red onion"], ["garlic", "garlic cloves"]]"""
+
+                    },
+                ]
+            },
+        ]
+
+        try:
+            ai_request = {
+                'api_key': ai_provider.api_key,
+                'model': ai_provider.model_name,
+                'response_format': {"type": "json_object"},
+                'messages': messages,
+                'timeout': 600,  # 5 minute timeout
+            }
+            if ai_provider.url:
+                ai_request['api_base'] = ai_provider.url
+            ai_response = completion(**ai_request)
+
+            response_text = ai_response.choices[0].message.content
+            result = json.loads(response_text)
+
+            # Handle case where AI returns object with a key instead of direct array
+            if isinstance(result, dict):
+                # Try common keys the AI might use
+                for key in ['duplicates', 'groups', 'result', 'data']:
+                    if key in result and isinstance(result[key], list):
+                        result = result[key]
+                        break
+
+            return Response(result, status=status.HTTP_200_OK)
+        except LitellmTimeout:
+            response = {
+                'error': True,
+                'msg': 'The AI request timed out. Please try again later.',
+            }
+            return Response(response, status=status.HTTP_408_REQUEST_TIMEOUT)
+        except BadRequestError as err:
+            response = {
+                'error': True,
+                'msg': 'The AI could not process your request. \n\n' + err.message,
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as err:
+            traceback.print_exc()
+            response = {
+                'error': True,
+                'msg': 'An unexpected error occurred while processing your AI request. \n\n' + str(err),
+            }
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AppImportView(APIView):
