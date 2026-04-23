@@ -159,6 +159,8 @@
         <batch-edit-user-space-dialog :items="selectedItems" v-model="batchEditDialog" v-if="model == 'UserSpace'" activator="model"
                                 @change="loadItems({page: page, itemsPerPage: pageSize, search: debouncedQuery})"></batch-edit-user-space-dialog>
 
+        <food-merge-inline v-if="model == 'Food'" @change="loadItems({page: page, itemsPerPage: pageSize, search: debouncedQuery})"></food-merge-inline>
+
     </v-container>
 </template>
 
@@ -185,6 +187,7 @@ import {useRouteQuery} from "@vueuse/router";
 import BatchEditFoodDialog from "@/components/dialogs/BatchEditFoodDialog.vue";
 import {useDebouncedSearch} from "@/composables/useDebouncedSearch";
 import BatchEditUserSpaceDialog from "@/components/dialogs/BatchEditUserSpaceDialog.vue";
+import FoodMergeInline from "@/components/FoodMergeInline.vue";
 
 const {t} = useI18n()
 const router = useRouter()
