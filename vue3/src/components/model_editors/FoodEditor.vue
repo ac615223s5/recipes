@@ -133,6 +133,9 @@
                         <v-checkbox :label="$t('OnHand')" :hint="$t('OnHand_help')" v-model="editingObj.foodOnhand" persistent-hint></v-checkbox>
                         <v-checkbox :label="$t('Ignore_Shopping')" :hint="$t('ignore_shopping_help')" v-model="editingObj.ignoreShopping" persistent-hint></v-checkbox>
                         <v-divider class="mt-2 mb-2"></v-divider>
+                        <verification-interval-input v-model="editingObj.verificationIntervalDays" allow-inherit
+                                                     :default-days="useUserPreferenceStore().activeSpace?.pantryDefaultVerificationDays"></verification-interval-input>
+                        <v-divider class="mt-4 mb-2"></v-divider>
                         <ModelSelect model="Food" v-model="editingObj.substitute" :label="$t('Substitutes')" :hint="$t('substitute_help')" mode="tags"></ModelSelect>
 
                         <!-- TODO re-add reset inheritance button/api call /function (previously annotated field on food -->
@@ -165,6 +168,7 @@ import FdcSearchDialog from "@/components/dialogs/FdcSearchDialog.vue";
 import {openFdcPage} from "@/utils/fdc.ts";
 import {DateTime} from "luxon";
 import HierarchyEditor from "@/components/inputs/HierarchyEditor.vue";
+import VerificationIntervalInput from "@/components/inputs/VerificationIntervalInput.vue";
 
 
 const props = defineProps({

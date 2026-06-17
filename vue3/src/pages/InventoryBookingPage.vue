@@ -43,9 +43,10 @@
                                 <v-card-text>
                                     <v-chip size="small" label color="warning" class="me-2" prepend-icon="fa-solid fa-barcode">{{inventoryEntry.code}}</v-chip>
                                     <v-chip size="small" label color="info" class="me-2" :prepend-icon="TInventoryLocation.icon">{{inventoryEntry.inventoryLocation.name}}</v-chip>
-                                    <v-chip size="small" label :color="(inventoryEntry.expires < DateTime.now() ? 'error' : 'success')">
+                                    <v-chip size="small" label class="me-2" :color="(inventoryEntry.expires < DateTime.now() ? 'error' : 'success')" v-if="inventoryEntry.expires">
                                         {{ DateTime.fromJSDate(inventoryEntry.expires).toFormat('yyyy-MM-dd') }}
                                     </v-chip>
+                                    <v-chip size="small" label v-if="inventoryEntry.isStale" color="error" prepend-icon="fa-solid fa-triangle-exclamation">{{ $t('Stale') }}</v-chip>
                                 </v-card-text>
                             </v-card>
 

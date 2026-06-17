@@ -477,7 +477,8 @@ class SpaceSerializer(WritableNestedModelSerializer):
             'allow_sharing', 'demo', 'food_inherit', 'user_count', 'recipe_count', 'file_size_mb',
             'image', 'nav_logo', 'space_theme', 'custom_space_theme', 'nav_bg_color', 'nav_text_color',
             'logo_color_32', 'logo_color_128', 'logo_color_144', 'logo_color_180', 'logo_color_192', 'logo_color_512', 'logo_color_svg', 'ai_credits_monthly',
-            'ai_credits_balance', 'ai_monthly_credits_used', 'ai_enabled', 'ai_default_provider', 'space_setup_completed', 'household_setup_completed')
+            'ai_credits_balance', 'ai_monthly_credits_used', 'ai_enabled', 'ai_default_provider', 'space_setup_completed', 'household_setup_completed',
+            'pantry_default_verification_days')
         read_only_fields = (
             'id', 'created_by', 'created_at', 'max_recipes', 'max_file_storage_mb', 'max_users', 'allow_sharing',
             'demo', 'ai_monthly_credits_used')
@@ -990,6 +991,7 @@ class FoodSerializer(UniqueFieldsMixin, WritableNestedModelSerializer, ExtendedR
             'id', 'name', 'plural_name', 'description', 'shopping', 'recipe', 'url', 'properties', 'properties_food_amount', 'properties_food_unit', 'fdc_id',
             'food_onhand', 'supermarket_category', 'image', 'parent', 'numchild', 'numrecipe', 'inherit_fields', 'full_name', 'ignore_shopping',
             'substitute', 'substitute_siblings', 'substitute_children', 'substitute_onhand', 'child_inherit_fields', 'open_data_slug', 'shopping_lists',
+            'verification_interval_days',
         )
         read_only_fields = ('id', 'numchild', 'parent', 'image', 'numrecipe')
 
@@ -1752,6 +1754,7 @@ class InventoryEntrySerializer(SpacedModelSerializer, WritableNestedModelSeriali
     food = FoodSerializer()
     unit = UnitSerializer()
     label = serializers.SerializerMethodField('get_label')
+    is_stale = serializers.SerializerMethodField('get_is_stale')
 
     def get_label(self, obj):
         text = f'#{obj.code} - {round(obj.amount, 2)}'
@@ -1760,9 +1763,14 @@ class InventoryEntrySerializer(SpacedModelSerializer, WritableNestedModelSeriali
         text += f' {obj.food.name}'
         return text
 
+    @extend_schema_field(bool)
+    def get_is_stale(self, obj):
+        return obj.is_stale
+
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
         validated_data['space'] = self.context['request'].space
+        validated_data['last_verified_at'] = timezone.now()
 
         instance = super().create(validated_data)
 
@@ -1789,6 +1797,10 @@ class InventoryEntrySerializer(SpacedModelSerializer, WritableNestedModelSeriali
         instance = super().update(instance, validated_data)
 
         if old_amount != instance.amount or old_inventory_location != instance.inventory_location:
+            # any booking is also an implicit verification that the entry still exists
+            instance.last_verified_at = timezone.now()
+            instance.save(update_fields=['last_verified_at'])
+
             booking_type = InventoryLog.B_MOVE if old_inventory_location != instance.inventory_location else InventoryLog.B_REMOVE
             InventoryLog.objects.create(
                 space=instance.space,
@@ -1806,9 +1818,10 @@ class InventoryEntrySerializer(SpacedModelSerializer, WritableNestedModelSeriali
         model = InventoryEntry
         fields = (
             'id', 'inventory_location', 'sub_location', 'code',
-            'food', 'unit', 'amount', 'expires', 'note', 'label', 'created_at', 'created_by'
+            'food', 'unit', 'amount', 'expires', 'note', 'label', 'created_at', 'created_by',
+            'last_verified_at', 'is_stale'
         )
-        read_only_fields = ('id', 'created_at', 'created_by')
+        read_only_fields = ('id', 'created_at', 'created_by', 'last_verified_at', 'is_stale')
 
 
 class InventoryLogSerializer(SpacedModelSerializer):

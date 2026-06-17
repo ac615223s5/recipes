@@ -325,6 +325,10 @@ class Space(ExportModelOperationsMixin('space'), models.Model):
     ai_credits_balance = models.DecimalField(default=0, max_digits=16, decimal_places=4)
     ai_default_provider = models.ForeignKey("AiProvider", on_delete=models.SET_NULL, null=True, blank=True, related_name='space_ai_default_provider')
 
+    pantry_default_verification_days = models.PositiveIntegerField(
+        default=14, help_text=_('Default number of days an inventory entry stays verified before it is considered stale. Used when the food has no interval set.')
+    )
+
     internal_note = models.TextField(blank=True, null=True)
 
     def safe_delete(self):
@@ -808,6 +812,11 @@ class Food(ExportModelOperationsMixin('food'), TreeModel, PermissionModelMixin):
     fdc_id = models.IntegerField(null=True, default=None, blank=True)
 
     open_data_slug = models.CharField(max_length=128, null=True, blank=True, default=None)
+
+    # number of days an inventory entry of this food stays verified before being considered stale.
+    # null/0 means the food never goes stale (e.g. salt, oil); null also falls back to the space default.
+    verification_interval_days = models.PositiveIntegerField(null=True, blank=True, default=None)
+
     space = models.ForeignKey(Space, on_delete=models.CASCADE)
     objects = ScopedManager(space='space', _manager_class=TreeManager)
 
@@ -1388,6 +1397,9 @@ class InventoryEntry(models.Model, PermissionModelMixin):
 
     expires = models.DateField(null=True, blank=True)
 
+    # last time a human confirmed this entry physically exists, independent of amount/location changes
+    last_verified_at = models.DateTimeField(null=True, blank=True)
+
     note = models.CharField(max_length=256, null=True, blank=True)
 
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -1396,6 +1408,24 @@ class InventoryEntry(models.Model, PermissionModelMixin):
 
     space = models.ForeignKey(Space, on_delete=models.CASCADE)
     objects = ScopedManager(space='space')
+
+    @property
+    def effective_verification_days(self):
+        """Resolve the staleness interval: food override, else space default. None means never goes stale."""
+        if self.food and self.food.verification_interval_days is not None:
+            # a food interval of 0 explicitly means "never goes stale" (e.g. salt, oil)
+            return self.food.verification_interval_days or None
+        return self.space.pantry_default_verification_days or None
+
+    @property
+    def is_stale(self):
+        """True if the entry has not been verified within its effective interval."""
+        days = self.effective_verification_days
+        if days is None:
+            return False
+        if self.last_verified_at is None:
+            return True
+        return self.last_verified_at < timezone.now() - timedelta(days=days)
 
     class Meta:
         constraints = [
@@ -1408,10 +1438,12 @@ class InventoryLog(models.Model, PermissionModelMixin):
     B_ADD = 'add'
     B_REMOVE = 'remove'
     B_MOVE = 'move'
+    B_CHECK = 'check'
     BOOKING_TYPES = [
         (B_ADD, _('Add')),
         (B_REMOVE, _('Remove')),
         (B_MOVE, _('Move')),
+        (B_CHECK, _('Verify')),
     ]
 
     entry = models.ForeignKey(InventoryEntry, on_delete=models.CASCADE)

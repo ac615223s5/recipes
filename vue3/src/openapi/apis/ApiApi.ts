@@ -1520,7 +1520,7 @@ export interface ApiInventoryEntryCascadingListRequest {
 }
 
 export interface ApiInventoryEntryCreateRequest {
-    inventoryEntry: Omit<InventoryEntry, 'label'|'createdAt'|'createdBy'>;
+    inventoryEntry: Omit<InventoryEntry, 'label'|'createdAt'|'createdBy'|'lastVerifiedAt'|'isStale'>;
 }
 
 export interface ApiInventoryEntryDestroyRequest {
@@ -1534,6 +1534,7 @@ export interface ApiInventoryEntryListRequest {
     inventoryLocationId?: number;
     page?: number;
     pageSize?: number;
+    stale?: boolean;
 }
 
 export interface ApiInventoryEntryNullingListRequest {
@@ -1545,7 +1546,7 @@ export interface ApiInventoryEntryNullingListRequest {
 
 export interface ApiInventoryEntryPartialUpdateRequest {
     id: number;
-    patchedInventoryEntry?: Omit<PatchedInventoryEntry, 'label'|'createdAt'|'createdBy'>;
+    patchedInventoryEntry?: Omit<PatchedInventoryEntry, 'label'|'createdAt'|'createdBy'|'lastVerifiedAt'|'isStale'>;
 }
 
 export interface ApiInventoryEntryProtectingListRequest {
@@ -1561,7 +1562,11 @@ export interface ApiInventoryEntryRetrieveRequest {
 
 export interface ApiInventoryEntryUpdateRequest {
     id: number;
-    inventoryEntry: Omit<InventoryEntry, 'label'|'createdAt'|'createdBy'>;
+    inventoryEntry: Omit<InventoryEntry, 'label'|'createdAt'|'createdBy'|'lastVerifiedAt'|'isStale'>;
+}
+
+export interface ApiInventoryEntryVerifyCreateRequest {
+    id: number;
 }
 
 export interface ApiInventoryLocationCascadingListRequest {
@@ -10707,6 +10712,10 @@ export class ApiApi extends runtime.BaseAPI {
             queryParameters['page_size'] = requestParameters['pageSize'];
         }
 
+        if (requestParameters['stale'] != null) {
+            queryParameters['stale'] = requestParameters['stale'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
         if (this.configuration && this.configuration.apiKey) {
@@ -10950,6 +10959,43 @@ export class ApiApi extends runtime.BaseAPI {
      */
     async apiInventoryEntryUpdate(requestParameters: ApiInventoryEntryUpdateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InventoryEntry> {
         const response = await this.apiInventoryEntryUpdateRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Mark the entry as verified (still exists) without changing its amount or location.
+     */
+    async apiInventoryEntryVerifyCreateRaw(requestParameters: ApiInventoryEntryVerifyCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InventoryEntry>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling apiInventoryEntryVerifyCreate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["Authorization"] = await this.configuration.apiKey("Authorization"); // ApiKeyAuth authentication
+        }
+
+        const response = await this.request({
+            path: `/api/inventory-entry/{id}/verify/`.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => InventoryEntryFromJSON(jsonValue));
+    }
+
+    /**
+     * Mark the entry as verified (still exists) without changing its amount or location.
+     */
+    async apiInventoryEntryVerifyCreate(requestParameters: ApiInventoryEntryVerifyCreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InventoryEntry> {
+        const response = await this.apiInventoryEntryVerifyCreateRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

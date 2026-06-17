@@ -30,8 +30,17 @@
                                 {{ item.subLocation }}
                                 </span>
         </template>
+        <template #item.lastVerifiedAt="{item}">
+            <v-chip size="small" label :color="item.isStale ? 'error' : 'success'"
+                    :prepend-icon="item.isStale ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-check'">
+                <template v-if="item.lastVerifiedAt">{{ DateTime.fromJSDate(item.lastVerifiedAt).toRelative() }}</template>
+                <template v-else>{{ $t('Never') }}</template>
+            </v-chip>
+        </template>
         <template #item.action="{item}">
             <v-btn-group divided border density="comfortable">
+                <v-btn icon="fa-solid fa-clipboard-check" :color="item.isStale ? 'warning' : undefined" :loading="verifyingId === item.id"
+                       @click="verifyEntry(item)" :title="$t('Verify')"></v-btn>
                 <v-btn icon="fa-solid fa-clock-rotate-left" @click="entryLogDialog = true; entryLogEntry = item"></v-btn>
                 <v-btn icon="fa-solid fa-minus" :to="{name: 'InventoryBookingPage', query: {inventoryEntryId: item.id, bookingMode: 'remove'}}"></v-btn>
                 <v-btn icon="fa-solid fa-arrow-right" :to="{name: 'InventoryBookingPage', query: {inventoryEntryId: item.id, bookingMode: 'move'}}"></v-btn>
@@ -52,7 +61,7 @@ import {PropType, ref, watch} from "vue";
 import {useI18n} from "vue-i18n";
 import InventoryEntryLogDialog from "@/components/dialogs/InventoryEntryLogDialog.vue";
 import {VDataTableUpdateOptions} from "@/vuetify.ts";
-import {ErrorMessageType, useMessageStore} from "@/stores/MessageStore.ts";
+import {ErrorMessageType, PreparedMessage, useMessageStore} from "@/stores/MessageStore.ts";
 import {useUserPreferenceStore} from "@/stores/UserPreferenceStore.ts";
 
 const {t} = useI18n()
@@ -60,7 +69,10 @@ const {t} = useI18n()
 const props = defineProps({
     food: {type: Object as PropType<Ingredient | null>, required: false},
     inventoryLocation: {type: Object as PropType<InventoryLocation | null>, required: false},
+    stale: {type: Boolean, default: false},
 })
+
+const verifyingId = ref<number | null>(null)
 
 watch(props, () => {
     loadItems({page: 1, itemsPerPage: useUserPreferenceStore().deviceSettings.general_tableItemsPerPage})
@@ -82,6 +94,7 @@ const tableHeaders = ref([
     {title: t('Food'), key: 'food'},
     {title: t('Expires'), key: 'expires',},
     {title: t('InventoryLocation'), key: 'inventoryLocation',},
+    {title: t('LastVerified'), key: 'lastVerifiedAt',},
     {title: 'Actions', key: 'action', align: 'end'},
 ])
 
@@ -100,6 +113,9 @@ function loadItems(options: VDataTableUpdateOptions) {
     if (props.inventoryLocation) {
         parameters.inventoryLocationId = props.inventoryLocation.id!
     }
+    if (props.stale) {
+        parameters.stale = true
+    }
 
     tableLoading.value = true
 
@@ -115,6 +131,25 @@ function loadItems(options: VDataTableUpdateOptions) {
         tableLoading.value = false
     })
 
+}
+
+/**
+ * mark an entry as verified (still exists) without changing its amount or location
+ */
+function verifyEntry(item: InventoryEntry) {
+    const api = new ApiApi()
+    verifyingId.value = item.id!
+    api.apiInventoryEntryVerifyCreate({id: item.id!}).then((r: InventoryEntry) => {
+        const idx = items.value.findIndex(i => i.id === r.id)
+        if (idx !== -1) {
+            items.value[idx] = r
+        }
+        useMessageStore().addPreparedMessage(PreparedMessage.UPDATE_SUCCESS)
+    }).catch((err: any) => {
+        useMessageStore().addError(ErrorMessageType.UPDATE_ERROR, err)
+    }).finally(() => {
+        verifyingId.value = null
+    })
 }
 </script>
 
