@@ -868,6 +868,7 @@ class InventoryLocationViewSet(LoggingMixin, viewsets.ModelViewSet, DeleteRelati
     OpenApiParameter(name='code', description=_('Returns all entries with the same food as the given code. If code is given food parameter is ignored'), type=str),
     OpenApiParameter(name='food_id', description=_('Returns all entries with the given food id'), type=int),
     OpenApiParameter(name='inventory_location_id', description=_('Returns all entries with the given inventory location id'), type=int),
+    OpenApiParameter(name='stale', description=_('If true only return entries that have not been verified within their verification interval.'), type=bool),
 ]))
 class InventoryEntryViewSet(LoggingMixin, viewsets.ModelViewSet, DeleteRelationMixing):
     queryset = InventoryEntry.objects
@@ -895,7 +896,33 @@ class InventoryEntryViewSet(LoggingMixin, viewsets.ModelViewSet, DeleteRelationM
             if inventory_location_id := self.request.query_params.get('inventory_location_id'):
                 queryset = queryset.filter(inventory_location_id=inventory_location_id)
 
+            if str2bool(self.request.query_params.get('stale', False)):
+                # staleness depends on a per-food interval falling back to the space default, so evaluate
+                # the model property and filter by id. Inventory lists per space are small enough for this.
+                stale_ids = [e.id for e in queryset.select_related('food', 'space') if e.is_stale]
+                queryset = queryset.filter(id__in=stale_ids)
+
         return queryset
+
+    @extend_schema(request=None, responses=InventoryEntrySerializer(many=False))
+    @decorators.action(detail=True, pagination_class=None, methods=['POST'], )
+    def verify(self, request, pk):
+        """Mark the entry as verified (still exists) without changing its amount or location."""
+        entry = get_object_or_404(InventoryEntry, pk=pk, space=request.space)
+        entry.last_verified_at = timezone.now()
+        entry.save(update_fields=['last_verified_at'])
+
+        InventoryLog.objects.create(
+            space=entry.space,
+            entry=entry,
+            booking_type=InventoryLog.B_CHECK,
+            old_amount=entry.amount,
+            new_amount=entry.amount,
+            old_inventory_location=entry.inventory_location,
+            new_inventory_location=entry.inventory_location,
+        )
+
+        return Response(InventoryEntrySerializer(entry, many=False, context={'request': self.request}).data)
 
 
 @extend_schema_view(list=extend_schema(parameters=[

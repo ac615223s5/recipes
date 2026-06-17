@@ -33,9 +33,14 @@
                                 <model-select model="InventoryLocation" v-model="inventoryLocation"></model-select>
                             </v-col>
                         </v-row>
+                        <v-row dense>
+                            <v-col cols="12">
+                                <v-switch v-model="staleOnly" :label="$t('ShowStaleOnly')" color="warning" hide-details density="compact"></v-switch>
+                            </v-col>
+                        </v-row>
 
 
-                        <inventory-entry-table :food="food" :inventory-location="inventoryLocation"></inventory-entry-table>
+                        <inventory-entry-table :food="food" :inventory-location="inventoryLocation" :stale="staleOnly"></inventory-entry-table>
                     </v-card-text>
                 </v-card>
             </v-col>
@@ -54,6 +59,7 @@ import ModelEditDialog from "@/components/dialogs/ModelEditDialog.vue";
 
 const food = ref<Food | undefined>(undefined)
 const inventoryLocation = ref<InventoryLocation | undefined>(undefined)
+const staleOnly = ref(false)
 
 </script>
 

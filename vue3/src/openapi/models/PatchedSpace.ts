@@ -260,6 +260,12 @@ export interface PatchedSpace {
      * @memberof PatchedSpace
      */
     householdSetupCompleted?: boolean;
+    /**
+     *
+     * @type {number}
+     * @memberof PatchedSpace
+     */
+    pantryDefaultVerificationDays?: number;
 }
 
 /**
@@ -313,6 +319,7 @@ export function PatchedSpaceFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'aiDefaultProvider': json['ai_default_provider'] == null ? undefined : AiProviderFromJSON(json['ai_default_provider']),
         'spaceSetupCompleted': json['space_setup_completed'] == null ? undefined : json['space_setup_completed'],
         'householdSetupCompleted': json['household_setup_completed'] == null ? undefined : json['household_setup_completed'],
+        'pantryDefaultVerificationDays': json['pantry_default_verification_days'] == null ? undefined : json['pantry_default_verification_days'],
     };
 }
 
@@ -345,6 +352,7 @@ export function PatchedSpaceToJSON(value?: Omit<PatchedSpace, 'createdBy'|'creat
         'ai_default_provider': AiProviderToJSON(value['aiDefaultProvider']),
         'space_setup_completed': value['spaceSetupCompleted'],
         'household_setup_completed': value['householdSetupCompleted'],
+        'pantry_default_verification_days': value['pantryDefaultVerificationDays'],
     };
 }
 

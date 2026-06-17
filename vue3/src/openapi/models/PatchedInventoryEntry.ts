@@ -110,6 +110,18 @@ export interface PatchedInventoryEntry {
      * @memberof PatchedInventoryEntry
      */
     readonly createdBy?: number;
+    /**
+     *
+     * @type {Date}
+     * @memberof PatchedInventoryEntry
+     */
+    readonly lastVerifiedAt?: Date | null;
+    /**
+     *
+     * @type {boolean}
+     * @memberof PatchedInventoryEntry
+     */
+    readonly isStale?: boolean;
 }
 
 /**
@@ -141,10 +153,12 @@ export function PatchedInventoryEntryFromJSONTyped(json: any, ignoreDiscriminato
         'label': json['label'] == null ? undefined : json['label'],
         'createdAt': json['created_at'] == null ? undefined : (new Date(json['created_at'])),
         'createdBy': json['created_by'] == null ? undefined : json['created_by'],
+        'lastVerifiedAt': json['last_verified_at'] == null ? undefined : (new Date(json['last_verified_at'])),
+        'isStale': json['is_stale'] == null ? undefined : json['is_stale'],
     };
 }
 
-export function PatchedInventoryEntryToJSON(value?: Omit<PatchedInventoryEntry, 'label'|'createdAt'|'createdBy'> | null): any {
+export function PatchedInventoryEntryToJSON(value?: Omit<PatchedInventoryEntry, 'label'|'createdAt'|'createdBy'|'lastVerifiedAt'|'isStale'> | null): any {
     if (value == null) {
         return value;
     }

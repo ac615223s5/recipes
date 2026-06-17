@@ -32,6 +32,10 @@
 
                         <space-limits-info :space="editingObj" :show-thank-you="false" v-if="isUpdate()"></space-limits-info>
 
+                        <v-divider class="mt-2 mb-4"></v-divider>
+                        <verification-interval-input v-model="editingObj.pantryDefaultVerificationDays"
+                                                     :label="$t('PantryDefaultVerificationInterval')"></verification-interval-input>
+
                     </v-form>
                 </v-tabs-window-item>
                 <v-tabs-window-item value="cosmetic">
@@ -92,6 +96,7 @@ import ModelSelect from "@/components/inputs/ModelSelect.vue";
 import {useUserPreferenceStore} from "@/stores/UserPreferenceStore.ts";
 import editor from "mavon-editor";
 import SpaceLimitsInfo from "@/components/display/SpaceLimitsInfo.vue";
+import VerificationIntervalInput from "@/components/inputs/VerificationIntervalInput.vue";
 
 const props = defineProps({
     item: {type: {} as PropType<Space>, required: false, default: null},

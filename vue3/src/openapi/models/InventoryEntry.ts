@@ -110,6 +110,18 @@ export interface InventoryEntry {
      * @memberof InventoryEntry
      */
     readonly createdBy: number;
+    /**
+     *
+     * @type {Date}
+     * @memberof InventoryEntry
+     */
+    readonly lastVerifiedAt: Date | null;
+    /**
+     *
+     * @type {boolean}
+     * @memberof InventoryEntry
+     */
+    readonly isStale: boolean;
 }
 
 /**
@@ -122,6 +134,8 @@ export function instanceOfInventoryEntry(value: object): value is InventoryEntry
     if (!('label' in value) || value['label'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('createdBy' in value) || value['createdBy'] === undefined) return false;
+    if (!('lastVerifiedAt' in value) || value['lastVerifiedAt'] === undefined) return false;
+    if (!('isStale' in value) || value['isStale'] === undefined) return false;
     return true;
 }
 
@@ -147,10 +161,12 @@ export function InventoryEntryFromJSONTyped(json: any, ignoreDiscriminator: bool
         'label': json['label'],
         'createdAt': (new Date(json['created_at'])),
         'createdBy': json['created_by'],
+        'lastVerifiedAt': (json['last_verified_at'] == null ? null : new Date(json['last_verified_at'])),
+        'isStale': json['is_stale'],
     };
 }
 
-export function InventoryEntryToJSON(value?: Omit<InventoryEntry, 'label'|'createdAt'|'createdBy'> | null): any {
+export function InventoryEntryToJSON(value?: Omit<InventoryEntry, 'label'|'createdAt'|'createdBy'|'lastVerifiedAt'|'isStale'> | null): any {
     if (value == null) {
         return value;
     }

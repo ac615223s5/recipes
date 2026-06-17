@@ -247,6 +247,12 @@ export interface Food {
      * @memberof Food
      */
     shoppingLists?: Array<ShoppingList>;
+    /**
+     *
+     * @type {number}
+     * @memberof Food
+     */
+    verificationIntervalDays?: number | null;
 }
 
 /**
@@ -297,6 +303,7 @@ export function FoodFromJSONTyped(json: any, ignoreDiscriminator: boolean): Food
         'childInheritFields': json['child_inherit_fields'] == null ? undefined : ((json['child_inherit_fields'] as Array<any>).map(FoodInheritFieldFromJSON)),
         'openDataSlug': json['open_data_slug'] == null ? undefined : json['open_data_slug'],
         'shoppingLists': json['shopping_lists'] == null ? undefined : ((json['shopping_lists'] as Array<any>).map(ShoppingListFromJSON)),
+        'verificationIntervalDays': json['verification_interval_days'] == null ? undefined : json['verification_interval_days'],
     };
 }
 
@@ -326,6 +333,7 @@ export function FoodToJSON(value?: Omit<Food, 'shopping'|'parent'|'numchild'|'fu
         'child_inherit_fields': value['childInheritFields'] == null ? undefined : ((value['childInheritFields'] as Array<any>).map(FoodInheritFieldToJSON)),
         'open_data_slug': value['openDataSlug'],
         'shopping_lists': value['shoppingLists'] == null ? undefined : ((value['shoppingLists'] as Array<any>).map(ShoppingListToJSON)),
+        'verification_interval_days': value['verificationIntervalDays'],
     };
 }
 
