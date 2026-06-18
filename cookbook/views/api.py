@@ -3017,6 +3017,7 @@ class AiFoodDeduplicateView(APIView):
 
 Analyze the list and group together foods that refer to the same or very similar items. Consider:
 - Plural vs singular forms (e.g., "tomato" and "tomatoes")
+- Different variations of the same food (e.g., "cherry tomato", "roma tomato", "tomato" could all be grouped)
 - Synonyms (e.g., "capsicum" and "bell pepper")
 - Minor spelling variations
 
@@ -3025,7 +3026,7 @@ Return ONLY a JSON array of arrays, where each inner array contains food names t
 Food list: {json.dumps(foods, ensure_ascii=False)}
 
 Example output format:
-[["tomato", "tomatoes", "Tomato"], ["onion", "onions"], ["tomato sauce","Tomato Sauce"]]"""
+[["tomato", "tomatoes", "cherry tomato"], ["onion", "onions", "red onion"], ["garlic", "garlic cloves"]]"""
 
                     },
                 ]
