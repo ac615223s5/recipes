@@ -165,9 +165,8 @@
 
 
 import {onBeforeMount, PropType, ref, watch} from "vue";
-import {ErrorMessageType, MessageType, useMessageStore} from "@/stores/MessageStore";
+import {ErrorMessageType, useMessageStore} from "@/stores/MessageStore";
 import {useI18n} from "vue-i18n";
-import {getCookie} from "@/utils/cookie";
 import {EditorSupportedModels, EditorSupportedTypes, GenericModel, getGenericModelFromString, Model, TInviteLink,} from "@/types/Models";
 import ModelEditDialog from "@/components/dialogs/ModelEditDialog.vue";
 import {useRoute, useRouter} from "vue-router";
@@ -316,7 +315,6 @@ function leaveSpace(space: Space) {
         }
     })
 }
-
 
 </script>
 

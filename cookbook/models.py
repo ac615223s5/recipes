@@ -424,7 +424,6 @@ class AiLog(models.Model, PermissionModelMixin):
     F_STEP_SORT = 'STEP_SORT'
     F_FOOD_PROPERTIES = 'FOOD_PROPERTIES'
     F_RECIPE_PROPERTIES = 'RECIPE_PROPERTIES'
-    F_FOOD_DEDUPLICATE = 'FOOD_DEDUPLICATE'
 
     ai_provider = models.ForeignKey(AiProvider, on_delete=models.SET_NULL, null=True)
     function = models.CharField(max_length=64)
