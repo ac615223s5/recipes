@@ -50,7 +50,13 @@ export interface MealType {
      */
     color?: string;
     /**
-     * 
+     *
+     * @type {boolean}
+     * @memberof MealType
+     */
+    isDefault?: boolean;
+    /**
+     *
      * @type {number}
      * @memberof MealType
      */
@@ -81,6 +87,7 @@ export function MealTypeFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'order': json['order'] == null ? undefined : json['order'],
         'time': json['time'] == null ? undefined : json['time'],
         'color': json['color'] == null ? undefined : json['color'],
+        'isDefault': json['default'] == null ? undefined : json['default'],
         'createdBy': json['created_by'],
     };
 }
@@ -96,6 +103,7 @@ export function MealTypeToJSON(value?: Omit<MealType, 'createdBy'> | null): any 
         'order': value['order'],
         'time': value['time'],
         'color': value['color'],
+        'default': value['isDefault'],
     };
 }
 

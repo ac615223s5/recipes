@@ -73,19 +73,19 @@ export interface MealPlan {
      * @type {Date}
      * @memberof MealPlan
      */
-    fromDate: Date;
+    fromDate?: Date;
     /**
-     * 
+     *
      * @type {Date}
      * @memberof MealPlan
      */
     toDate?: Date;
     /**
-     * 
+     *
      * @type {MealType}
      * @memberof MealPlan
      */
-    mealType: MealType;
+    mealType?: MealType;
     /**
      * 
      * @type {number}
@@ -124,8 +124,6 @@ export interface MealPlan {
 export function instanceOfMealPlan(value: object): value is MealPlan {
     if (!('servings' in value) || value['servings'] === undefined) return false;
     if (!('noteMarkdown' in value) || value['noteMarkdown'] === undefined) return false;
-    if (!('fromDate' in value) || value['fromDate'] === undefined) return false;
-    if (!('mealType' in value) || value['mealType'] === undefined) return false;
     if (!('createdBy' in value) || value['createdBy'] === undefined) return false;
     if (!('recipeName' in value) || value['recipeName'] === undefined) return false;
     if (!('mealTypeName' in value) || value['mealTypeName'] === undefined) return false;
@@ -149,9 +147,9 @@ export function MealPlanFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'servings': json['servings'],
         'note': json['note'] == null ? undefined : json['note'],
         'noteMarkdown': json['note_markdown'],
-        'fromDate': (new Date(json['from_date'])),
+        'fromDate': json['from_date'] == null ? undefined : (new Date(json['from_date'])),
         'toDate': json['to_date'] == null ? undefined : (new Date(json['to_date'])),
-        'mealType': MealTypeFromJSON(json['meal_type']),
+        'mealType': json['meal_type'] == null ? undefined : MealTypeFromJSON(json['meal_type']),
         'createdBy': json['created_by'],
         'recipeName': json['recipe_name'],
         'mealTypeName': json['meal_type_name'],
@@ -171,7 +169,7 @@ export function MealPlanToJSON(value?: Omit<MealPlan, 'noteMarkdown'|'createdBy'
         'recipe': RecipeOverviewToJSON(value['recipe']),
         'servings': value['servings'],
         'note': value['note'],
-        'from_date': ((value['fromDate']).toISOString()),
+        'from_date': value['fromDate'] == null ? undefined : ((value['fromDate']).toISOString()),
         'to_date': value['toDate'] == null ? undefined : ((value['toDate']).toISOString()),
         'meal_type': MealTypeToJSON(value['mealType']),
         'addshopping': value['addshopping'],

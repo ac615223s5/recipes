@@ -51,6 +51,7 @@
                                             multiple="range"
                                             prepend-icon=""
                                             prepend-inner-icon="$calendar"
+                                            clearable
                                             hide-details
                                         ></v-date-input>
                                     </v-col>
@@ -120,7 +121,6 @@ import ModelSelect from "@/components/inputs/ModelSelect.vue";
 import RecipeCard from "@/components/display/RecipeCard.vue";
 import {VDateInput} from "vuetify/labs/VDateInput";
 import {useUserPreferenceStore} from "@/stores/UserPreferenceStore";
-import {ErrorMessageType, MessageType, useMessageStore} from "@/stores/MessageStore";
 import ShoppingLineItem from "@/components/display/ShoppingLineItem.vue";
 import {useShoppingStore} from "@/stores/ShoppingStore";
 import ShoppingListEntryInput from "@/components/inputs/ShoppingListEntryInput.vue";
@@ -236,6 +236,11 @@ function initializeEditor() {
 
             applyItemDefaults(props.itemDefaults)
 
+            // fall back to the space default meal type when the user has no personal default set
+            if (!editingObj.value.mealType) {
+                ensureDefaultMealType()
+            }
+
             if (editingObj.value.mealType?.time) {
                 mealPlanTime.value = editingObj.value.mealType.time.substring(0, 5)
             }
@@ -262,20 +267,37 @@ function initializeEditor() {
 }
 
 /**
+ * select the space default meal type (or the first available) when nothing else preselected one
+ */
+async function ensureDefaultMealType() {
+    const api = new ApiApi()
+    const r = await api.apiMealTypeList().catch(() => null)
+    const types = r?.results ?? []
+    const defaultType = types.find((t) => t.isDefault) ?? types[0]
+    if (defaultType && !editingObj.value.mealType) {
+        const changed = editingObjChanged.value
+        editingObj.value.mealType = defaultType
+        nextTick(() => {
+            editingObjChanged.value = changed
+        })
+    }
+}
+
+/**
  * update the editing object with data from the date range selector whenever its changed (could probably be a watcher)
  */
 // TODO properly hook into beforeSave hook if i ever implement one for model editors
 function updateDate() {
-    if (dateRangeValue.value != null) {
-        editingObj.value.fromDate = dateRangeValue.value[0]
-        if (dateRangeValue.value[dateRangeValue.value.length - 1] > editingObj.value.fromDate) {
-            editingObj.value.toDate = dateRangeValue.value[dateRangeValue.value.length - 1]
-        } else {
-            editingObj.value.toDate = editingObj.value.fromDate
-        }
+    if (dateRangeValue.value != null && dateRangeValue.value.length > 0) {
+        const start = dateRangeValue.value[0]
+        const end = dateRangeValue.value[dateRangeValue.value.length - 1]
+        editingObj.value.fromDate = start
+        editingObj.value.toDate = end && start && end > start ? end : start
         applyTimeToEditingDates()
     } else {
-        useMessageStore().addMessage(MessageType.WARNING, 'Missing Date', 7000)
+        // no date selected -> undated meal plan (e.g. a cook plan entry that stays off the calendar)
+        editingObj.value.fromDate = undefined
+        editingObj.value.toDate = undefined
     }
 }
 
@@ -283,6 +305,11 @@ function updateDate() {
  * initialize the dateRange selector when the editingObject is initialized
  */
 function initializeDateRange() {
+    if (!editingObj.value.fromDate) {
+        // undated meal plan -> leave the date picker empty
+        dateRangeValue.value = []
+        return
+    }
     if (editingObj.value.toDate && DateTime.fromJSDate(editingObj.value.toDate).diff(DateTime.fromJSDate(editingObj.value.fromDate), 'days').toObject().days! >= 1) {
         dateRangeValue.value = [editingObj.value.fromDate]
         let currentDate = DateTime.fromJSDate(editingObj.value.fromDate).plus({day: 1}).toJSDate()
