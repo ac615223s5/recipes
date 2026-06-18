@@ -51,10 +51,24 @@
 
               <template v-if="missingFoods.length">
                 <v-divider class="my-4"></v-divider>
-                <div class="text-overline text-medium-emphasis">{{ $t("NotInPantry") }}</div>
+                <div class="d-flex align-center justify-space-between">
+                  <div class="text-overline text-medium-emphasis">{{ $t("NotInPantry") }}</div>
+                  <v-btn size="small" variant="text" color="primary" prepend-icon="fa-solid fa-cart-plus" :loading="addingAllShop" @click="addAllMissingToShopping">
+                    {{ $t("AddAllToShopping") }}
+                  </v-btn>
+                </div>
                 <v-chip-group column>
                   <v-chip v-for="f in missingFoods" :key="f.id" color="error" variant="tonal" size="small">
                     {{ f.name }}
+                    <v-icon v-if="isOnShopping(f)" end icon="fa-solid fa-cart-shopping" class="ms-1 text-success" :title="$t('OnShoppingList')"></v-icon>
+                    <v-icon
+                      v-else
+                      end
+                      :icon="addingShopFoodId === f.id ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-cart-plus'"
+                      class="ms-1"
+                      :title="$t('AddToShopping')"
+                      @click.stop="addFoodToShopping(f)"
+                    ></v-icon>
                     <v-icon
                       end
                       :icon="addingFoodId === f.id ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-plus'"
@@ -76,14 +90,29 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue"
-import { ApiApi, CookLog, Food, InventoryEntry, InventoryLocation, MealPlan, RecipeOverview } from "@/openapi"
+import { ApiApi, CookLog, Food, InventoryEntry, InventoryLocation, MealPlan, RecipeOverview, ShoppingListEntry, ShoppingListEntryBulkCreate, ShoppingListRecipe, Unit } from "@/openapi"
 import InventoryEntryTable from "@/components/display/InventoryEntryTable.vue"
 import ModelSelect from "@/components/inputs/ModelSelect.vue"
 import RecipeImage from "@/components/display/RecipeImage.vue"
 import { ErrorMessageType, MessageType, PreparedMessage, useMessageStore } from "@/stores/MessageStore"
+import { useShoppingStore } from "@/stores/ShoppingStore"
+import { useUserPreferenceStore } from "@/stores/UserPreferenceStore"
 import { useI18n } from "vue-i18n"
 
 const { t } = useI18n()
+
+// a planned recipe's foods scaled to the planned servings, used for shopping-list amounts/units and recipe grouping
+interface PlannedIngredient {
+  food: Food
+  amount: number
+  unit: Unit | null
+  ingredientId: number | null
+}
+interface PlannedRecipe {
+  recipeId: number
+  servings: number
+  ingredients: PlannedIngredient[]
+}
 
 const plans = ref<MealPlan[]>([])
 const recipeToAdd = ref<RecipeOverview | undefined>(undefined)
@@ -91,12 +120,17 @@ const adding = ref(false)
 const removingId = ref<number | null>(null)
 const completingId = ref<number | null>(null)
 const addingFoodId = ref<number | null>(null)
+const addingShopFoodId = ref<number | null>(null)
+const addingAllShop = ref(false)
 // bumped to force the pantry table to re-fetch after the stock changes
 const pantryRefresh = ref(0)
 
 // foods used by the planned recipes, which of those are currently in the pantry, and the available pantry locations
 const neededFoods = ref<Food[]>([])
+const recipeData = ref<PlannedRecipe[]>([])
 const inStockFoodIds = ref<Set<number>>(new Set())
+// foods that already have an open (unchecked) entry on the shopping list, to avoid adding duplicates
+const onShoppingFoodIds = ref<Set<number>>(new Set())
 const inventoryLocations = ref<InventoryLocation[]>([])
 
 // recipe ids backing the ingredient table; cook plan entries may have no recipe (free text), so filter those out
@@ -108,6 +142,9 @@ const missingFoods = computed(() => neededFoods.value.filter((f) => f.id != null
 onMounted(() => {
   loadPlans()
   loadLocations()
+  // make sure the user's selected shopping lists are available for new entries
+  useShoppingStore().loadShoppingLists()
+  loadShoppingFoods()
 })
 
 // recompute the needed-vs-stocked ingredient breakdown whenever the set of planned recipes changes
@@ -139,24 +176,38 @@ async function refreshIngredients() {
   const ids = recipeIds.value
   if (!ids.length) {
     neededFoods.value = []
+    recipeData.value = []
     inStockFoodIds.value = new Set()
     return
   }
   const api = new ApiApi()
 
-  // collect the distinct foods used across all planned recipes (recipe -> steps -> ingredients -> food)
+  // collect the foods used across all planned recipes (recipe -> steps -> ingredients -> food),
+  // keeping per-recipe amounts/units (scaled to the planned servings) for the shopping list
   const recipes = await Promise.all(ids.map((id) => api.apiRecipeRetrieve({ id }).catch(() => null)))
   const foodMap = new Map<number, Food>()
-  recipes.forEach((r) => {
-    r?.steps?.forEach((s) => {
+  const planned: PlannedRecipe[] = []
+  recipes.forEach((r, idx) => {
+    if (!r) {
+      return
+    }
+    const recipeId = ids[idx]!
+    const plan = plans.value.find((p) => p.recipe?.id === recipeId)
+    const planServings = plan?.servings || r.servings || 1
+    const factor = planServings / (r.servings || 1)
+    const ingredients: PlannedIngredient[] = []
+    r.steps?.forEach((s) => {
       s.ingredients?.forEach((ing) => {
-        if (ing.food?.id != null) {
+        if (ing.food?.id != null && !ing.isHeader) {
           foodMap.set(ing.food.id, ing.food)
+          ingredients.push({ food: ing.food, amount: (ing.amount ?? 0) * factor, unit: ing.unit ?? null, ingredientId: ing.id ?? null })
         }
       })
     })
+    planned.push({ recipeId, servings: planServings, ingredients })
   })
   neededFoods.value = [...foodMap.values()].sort((a, b) => a.name.localeCompare(b.name))
+  recipeData.value = planned
 
   // which of those foods are actually on hand (the recipes filter only returns entries with amount > 0)
   const inventory = await api.apiInventoryEntryList({ recipes: ids.join(","), pageSize: 200 }).catch(() => null)
@@ -202,6 +253,120 @@ function addToPantry(food: Food) {
     .finally(() => {
       addingFoodId.value = null
     })
+}
+
+/**
+ * load the foods that already have an open entry on the shopping list, so we don't add them again
+ */
+function loadShoppingFoods() {
+  const api = new ApiApi()
+  api
+    .apiShoppingListEntryList({ pageSize: 1000 })
+    .then((r) => {
+      onShoppingFoodIds.value = new Set(
+        (r.results ?? [])
+          .filter((e) => !e.checked)
+          .map((e) => e.food?.id)
+          .filter((id): id is number => id != null),
+      )
+    })
+    .catch(() => {})
+}
+
+/**
+ * whether a food already has an open entry on the shopping list
+ */
+function isOnShopping(food: Food): boolean {
+  return food.id != null && onShoppingFoodIds.value.has(food.id)
+}
+
+/**
+ * find the first planned-recipe occurrence of a food, to reuse its (scaled) amount and unit
+ */
+function plannedIngredientFor(food: Food): PlannedIngredient | null {
+  for (const r of recipeData.value) {
+    const ing = r.ingredients.find((i) => i.food.id === food.id)
+    if (ing) {
+      return ing
+    }
+  }
+  return null
+}
+
+/**
+ * the shopping lists the user currently has selected (new entries are added to these)
+ */
+function selectedShoppingLists() {
+  const selected = useUserPreferenceStore().deviceSettings.shopping_selected_shopping_lists
+  return useShoppingStore().shoppingLists.filter((sl) => sl.id != null && selected.includes(sl.id))
+}
+
+/**
+ * add a single missing ingredient to the shopping list (with its recipe amount/unit) via the shopping store
+ */
+function addFoodToShopping(food: Food) {
+  if (isOnShopping(food)) {
+    return
+  }
+  const ing = plannedIngredientFor(food)
+  addingShopFoodId.value = food.id!
+  const entry = {
+    amount: ing ? ing.amount : 1,
+    unit: ing?.unit ?? null,
+    food,
+    shoppingLists: selectedShoppingLists(),
+  } as unknown as ShoppingListEntry
+  useShoppingStore()
+    .createObject(entry, true)
+    .then((r) => {
+      if (r) {
+        onShoppingFoodIds.value = new Set(onShoppingFoodIds.value).add(food.id!)
+        useMessageStore().addPreparedMessage(PreparedMessage.CREATE_SUCCESS)
+      }
+    })
+    .finally(() => {
+      addingShopFoodId.value = null
+    })
+}
+
+/**
+ * add every missing ingredient to the shopping list, grouped under its recipe so amounts/units and provenance are kept
+ */
+async function addAllMissingToShopping() {
+  const api = new ApiApi()
+  addingAllShop.value = true
+  const shoppingListsIds = selectedShoppingLists().map((sl) => sl.id!)
+  const added = new Set<number>()
+  try {
+    for (const r of recipeData.value) {
+      // only add foods that are missing from the pantry AND not already on the shopping list
+      const missing = r.ingredients.filter((i) => i.food.id != null && !inStockFoodIds.value.has(i.food.id!) && !onShoppingFoodIds.value.has(i.food.id!))
+      if (!missing.length) {
+        continue
+      }
+      const slr = await api.apiShoppingListRecipeCreate({ shoppingListRecipe: { recipe: r.recipeId, servings: r.servings } as unknown as ShoppingListRecipe })
+      await api.apiShoppingListRecipeBulkCreateEntriesCreate({
+        id: slr.id!,
+        shoppingListEntryBulkCreate: {
+          entries: missing.map((i) => ({ amount: i.amount, foodId: i.food.id!, unitId: i.unit?.id ?? null, ingredientId: i.ingredientId })),
+          shoppingListsIds,
+        } as unknown as ShoppingListEntryBulkCreate,
+      })
+      missing.forEach((i) => added.add(i.food.id!))
+    }
+    if (added.size) {
+      const updated = new Set(onShoppingFoodIds.value)
+      added.forEach((id) => updated.add(id))
+      onShoppingFoodIds.value = updated
+      useMessageStore().addPreparedMessage(PreparedMessage.CREATE_SUCCESS)
+    } else {
+      useMessageStore().addMessage(MessageType.INFO, { title: t("AlreadyOnShoppingList"), text: "" }, 4000)
+    }
+  } catch (err) {
+    useMessageStore().addError(ErrorMessageType.CREATE_ERROR, err)
+  } finally {
+    addingAllShop.value = false
+  }
 }
 
 /**

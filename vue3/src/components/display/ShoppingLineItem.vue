@@ -44,7 +44,7 @@
         </template>
 
         <template v-slot:[checkBtnSlot]>
-            <div class="ps-3 pe-3" @click.native.stop="useShoppingStore().setEntriesCheckedState(entries, !isChecked, true);">
+            <div class="ps-3 pe-3" @click.native.stop="toggleChecked()">
                 <v-btn color="success" size="large"
                        :class="{'btn-success': !isChecked, 'btn-warning': isChecked}" :icon="actionButtonIcon" variant="plain">
                 </v-btn>
@@ -74,6 +74,9 @@ import {isDelayed, isEntryVisible, isShoppingListFoodDelayed, isShoppingListFood
 import ShoppingLineItemDialog from "@/components/dialogs/ShoppingLineItemDialog.vue";
 import {pluralString, isSingularAmount} from "@/utils/model_utils.ts";
 import ShoppingListsBar from "@/components/display/ShoppingListsBar.vue";
+import {usePantryStock} from "@/composables/usePantryStock";
+
+const {addEntriesToPantry, removeEntriesFromPantry} = usePantryStock()
 
 const emit = defineEmits(['clicked'])
 
@@ -235,6 +238,21 @@ const infoRow = computed(() => {
 
     return info_row.join(' - ')
 })
+
+/**
+ * primary check action: when checking an item off, add the bought items to the pantry first; when unchecking, just toggle.
+ * (a "check without adding to pantry" option is available in the item dialog)
+ */
+async function toggleChecked() {
+    if (isChecked.value) {
+        // un-checking reverses the pantry add so toggling doesn't pile up duplicate pantry entries
+        await removeEntriesFromPantry(entries.value)
+        useShoppingStore().setEntriesCheckedState(entries.value, false, true)
+        return
+    }
+    await addEntriesToPantry(entries.value)
+    useShoppingStore().setEntriesCheckedState(entries.value, true, true)
+}
 
 /**
  * set food on_hand status to true and check all associated entries
