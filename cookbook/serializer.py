@@ -547,7 +547,7 @@ class MealTypeSerializer(SpacedModelSerializer, WritableNestedModelSerializer):
     class Meta:
         list_serializer_class = SpaceFilterSerializer
         model = MealType
-        fields = ('id', 'name', 'order', 'time', 'color', 'created_by')
+        fields = ('id', 'name', 'order', 'time', 'color', 'default', 'created_by')
         read_only_fields = ('created_by',)
 
 
@@ -1374,14 +1374,15 @@ class RecipeBookEntrySerializer(serializers.ModelSerializer):
 class MealPlanSerializer(SpacedModelSerializer, WritableNestedModelSerializer):
     recipe = RecipeOverviewSerializer(required=False, allow_null=True)
     recipe_name = serializers.CharField(source='recipe.name', read_only=True)
-    meal_type = MealTypeSerializer()
+    meal_type = MealTypeSerializer(required=False)
     meal_type_name = serializers.CharField(source='meal_type.name', read_only=True)  # TODO deprecate once old meal plan was removed
     note_markdown = serializers.SerializerMethodField('get_note_markdown')
     servings = CustomDecimalField()
     shopping = serializers.SerializerMethodField('in_shopping')
     addshopping = serializers.BooleanField(write_only=True, required=False)
 
-    to_date = serializers.DateTimeField(required=False)
+    from_date = serializers.DateTimeField(required=False, allow_null=True)
+    to_date = serializers.DateTimeField(required=False, allow_null=True)
 
     @extend_schema_field(str)
     def get_note_markdown(self, obj):
@@ -1398,6 +1399,8 @@ class MealPlanSerializer(SpacedModelSerializer, WritableNestedModelSerializer):
         Priority: explicit time > meal_type.time > noon fallback.
         Returns the datetime unchanged if it already has a non-midnight local time.
         """
+        if dt is None:
+            return None
         local_dt = timezone.localtime(dt)
         if local_dt.hour != 0 or local_dt.minute != 0 or local_dt.second != 0:
             return local_dt
@@ -1418,12 +1421,26 @@ class MealPlanSerializer(SpacedModelSerializer, WritableNestedModelSerializer):
         if meal_type_id:
             meal_type_obj = MealType.objects.filter(pk=meal_type_id, space=self.context['request'].space).first()
 
-        validated_data['from_date'] = self._apply_default_time(validated_data['from_date'], meal_type_obj)
+        # meal_type is a required FK; cook plan entries omit it, so fall back to the user/space default,
+        # auto-creating one if the space has no meal types yet
+        if not meal_type_obj and not validated_data.get('meal_type'):
+            meal_type_obj = self.context['request'].user.userpreference.default_meal_type \
+                or MealType.objects.filter(space=self.context['request'].space, default=True).first() \
+                or MealType.objects.filter(space=self.context['request'].space).first() \
+                or MealType.objects.create(space=self.context['request'].space, name=_('Cooking'),
+                                           created_by=self.context['request'].user, default=True)
+            validated_data['meal_type'] = meal_type_obj
+            # drf-writable-nested resolves the meal_type relation from initial_data, so seed it there too
+            if isinstance(self.initial_data, dict):
+                self.initial_data['meal_type'] = {'id': meal_type_obj.id, 'name': meal_type_obj.name}
 
-        if 'to_date' not in validated_data or validated_data['to_date'] is None:
-            validated_data['to_date'] = validated_data['from_date']
-        else:
-            validated_data['to_date'] = self._apply_default_time(validated_data['to_date'], meal_type_obj)
+        # undated (cook plan) entries leave both dates null; dated entries keep the noon/meal-type default behavior
+        if validated_data.get('from_date'):
+            validated_data['from_date'] = self._apply_default_time(validated_data['from_date'], meal_type_obj)
+            if 'to_date' not in validated_data or validated_data['to_date'] is None:
+                validated_data['to_date'] = validated_data['from_date']
+            else:
+                validated_data['to_date'] = self._apply_default_time(validated_data['to_date'], meal_type_obj)
 
         add_to_shopping = False
         try:
@@ -1752,7 +1769,7 @@ class InventoryLocationSerializer(UniqueFieldsMixin, SpacedModelSerializer, Writ
 class InventoryEntrySerializer(SpacedModelSerializer, WritableNestedModelSerializer):
     inventory_location = InventoryLocationSerializer()
     food = FoodSerializer()
-    unit = UnitSerializer()
+    unit = UnitSerializer(required=False, allow_null=True)
     label = serializers.SerializerMethodField('get_label')
     is_stale = serializers.SerializerMethodField('get_is_stale')
 

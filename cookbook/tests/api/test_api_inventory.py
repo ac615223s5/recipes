@@ -8,7 +8,7 @@ from django_scopes import scopes_disabled
 from pytest_factoryboy import LazyFixture, register
 
 from cookbook.models import InventoryEntry, InventoryLog
-from cookbook.tests.factories import InventoryEntryFactory
+from cookbook.tests.factories import (FoodFactory, IngredientFactory, InventoryEntryFactory, RecipeFactory, StepFactory)
 
 LIST_URL = 'api:inventoryentry-list'
 DETAIL_URL = 'api:inventoryentry-detail'
@@ -106,6 +106,59 @@ def test_verify_requires_authentication(a_u, entry_stale):
 
 
 # ---------------------------------------------------------------- stale list filter
+
+
+def _recipe_with_food(space, food):
+    # build a recipe whose single step uses exactly the given food
+    ingredient = IngredientFactory(food=food, space=space)
+    step = StepFactory(space=space, ingredients=[ingredient], ingredients__count=0)
+    recipe = RecipeFactory(space=space, steps__count=0)
+    recipe.steps.add(step)
+    return recipe
+
+
+# ---------------------------------------------------------------- recipes list filter
+
+
+def test_recipes_filter(u1_s1, space_1):
+    with scopes_disabled():
+        food = FoodFactory(space=space_1)
+        other_food = FoodFactory(space=space_1)
+        recipe = _recipe_with_food(space_1, food)
+        wanted = InventoryEntryFactory(space=space_1, food=food)
+        unrelated = InventoryEntryFactory(space=space_1, food=other_food)
+
+    r = u1_s1.get(f'{reverse(LIST_URL)}?recipes={recipe.id}')
+    assert r.status_code == 200
+    returned_ids = {e['id'] for e in json.loads(r.content)['results']}
+    assert wanted.id in returned_ids
+    assert unrelated.id not in returned_ids
+
+
+def test_recipes_filter_with_stale(u1_s1, space_1):
+    with scopes_disabled():
+        space_1.pantry_default_verification_days = 7
+        space_1.save()
+        food = FoodFactory(space=space_1)
+        recipe = _recipe_with_food(space_1, food)
+        fresh = InventoryEntryFactory(space=space_1, food=food)
+        fresh.last_verified_at = timezone.now()
+        fresh.save()
+        stale = InventoryEntryFactory(space=space_1, food=food)
+        stale.last_verified_at = timezone.now() - timedelta(days=30)
+        stale.save()
+
+    returned_ids = {e['id'] for e in json.loads(u1_s1.get(f'{reverse(LIST_URL)}?recipes={recipe.id}&stale=true').content)['results']}
+    assert stale.id in returned_ids
+    assert fresh.id not in returned_ids
+
+
+def test_recipes_filter_invalid(u1_s1, space_1):
+    with scopes_disabled():
+        InventoryEntryFactory(space=space_1)
+    r = u1_s1.get(f'{reverse(LIST_URL)}?recipes=abc')
+    assert r.status_code == 200
+    assert json.loads(r.content)['results'] == []
 
 
 def test_stale_filter(u1_s1, space_1):

@@ -41,9 +41,11 @@
             <v-btn-group divided border density="comfortable">
                 <v-btn icon="fa-solid fa-clipboard-check" :color="item.isStale ? 'warning' : undefined" :loading="verifyingId === item.id"
                        @click="verifyEntry(item)" :title="$t('Verify')"></v-btn>
-                <v-btn icon="fa-solid fa-clock-rotate-left" @click="entryLogDialog = true; entryLogEntry = item"></v-btn>
-                <v-btn icon="fa-solid fa-minus" :to="{name: 'InventoryBookingPage', query: {inventoryEntryId: item.id, bookingMode: 'remove'}}"></v-btn>
-                <v-btn icon="fa-solid fa-arrow-right" :to="{name: 'InventoryBookingPage', query: {inventoryEntryId: item.id, bookingMode: 'move'}}"></v-btn>
+                <v-btn v-if="!cookMode" icon="fa-solid fa-clock-rotate-left" @click="entryLogDialog = true; entryLogEntry = item"></v-btn>
+                <v-btn v-if="cookMode" icon="fa-solid fa-xmark" color="delete" :loading="removingId === item.id"
+                       @click="markNotInPantry(item)" :title="$t('MarkNotInPantry')"></v-btn>
+                <v-btn v-else icon="fa-solid fa-minus" :to="{name: 'InventoryBookingPage', query: {inventoryEntryId: item.id, bookingMode: 'remove'}}"></v-btn>
+                <v-btn v-if="!cookMode" icon="fa-solid fa-arrow-right" :to="{name: 'InventoryBookingPage', query: {inventoryEntryId: item.id, bookingMode: 'move'}}"></v-btn>
             </v-btn-group>
 
         </template>
@@ -57,7 +59,7 @@
 import {DateTime} from "luxon";
 import {ingredientToString} from "@/utils/model_utils.ts";
 import {ApiApi, ApiInventoryEntryListRequest, Ingredient, InventoryEntry, InventoryLocation} from "@/openapi";
-import {PropType, ref, watch} from "vue";
+import {computed, PropType, ref, watch} from "vue";
 import {useI18n} from "vue-i18n";
 import InventoryEntryLogDialog from "@/components/dialogs/InventoryEntryLogDialog.vue";
 import {VDataTableUpdateOptions} from "@/vuetify.ts";
@@ -70,9 +72,15 @@ const props = defineProps({
     food: {type: Object as PropType<Ingredient | null>, required: false},
     inventoryLocation: {type: Object as PropType<InventoryLocation | null>, required: false},
     stale: {type: Boolean, default: false},
+    recipes: {type: Array as PropType<number[]>, default: () => []},
+    // cook plan mode: hide the barcode/history/move controls and turn remove into a one-click "mark not in pantry"
+    cookMode: {type: Boolean, default: false},
 })
 
+const emit = defineEmits(['changed'])
+
 const verifyingId = ref<number | null>(null)
+const removingId = ref<number | null>(null)
 
 watch(props, () => {
     loadItems({page: 1, itemsPerPage: useUserPreferenceStore().deviceSettings.general_tableItemsPerPage})
@@ -89,14 +97,18 @@ const pageSize = ref(useUserPreferenceStore().deviceSettings.general_tableItemsP
 const entryLogDialog = ref(false)
 const entryLogEntry = ref<InventoryEntry | null>(null)
 
-const tableHeaders = ref([
-    {title: t('Code'), key: 'code'},
-    {title: t('Food'), key: 'food'},
-    {title: t('Expires'), key: 'expires',},
-    {title: t('InventoryLocation'), key: 'inventoryLocation',},
-    {title: t('LastVerified'), key: 'lastVerifiedAt',},
-    {title: 'Actions', key: 'action', align: 'end'},
-])
+const tableHeaders = computed(() => {
+    const headers = [
+        {title: t('Code'), key: 'code'},
+        {title: t('Food'), key: 'food'},
+        {title: t('Expires'), key: 'expires',},
+        {title: t('InventoryLocation'), key: 'inventoryLocation',},
+        {title: t('LastVerified'), key: 'lastVerifiedAt',},
+        {title: 'Actions', key: 'action', align: 'end'},
+    ]
+    // hide the barcode column in cook plan mode
+    return props.cookMode ? headers.filter(h => h.key !== 'code') : headers
+})
 
 
 /**
@@ -115,6 +127,9 @@ function loadItems(options: VDataTableUpdateOptions) {
     }
     if (props.stale) {
         parameters.stale = true
+    }
+    if (props.recipes && props.recipes.length) {
+        parameters.recipes = props.recipes.join(',')
     }
 
     tableLoading.value = true
@@ -149,6 +164,24 @@ function verifyEntry(item: InventoryEntry) {
         useMessageStore().addError(ErrorMessageType.UPDATE_ERROR, err)
     }).finally(() => {
         verifyingId.value = null
+    })
+}
+
+/**
+ * mark an entry as no longer in the pantry by setting its amount to 0 (keeps the entry/history, drops it from stock)
+ */
+function markNotInPantry(item: InventoryEntry) {
+    const api = new ApiApi()
+    removingId.value = item.id!
+    api.apiInventoryEntryUpdate({id: item.id!, inventoryEntry: {...item, amount: 0} as InventoryEntry}).then(() => {
+        items.value = items.value.filter(i => i.id !== item.id)
+        itemCount.value = Math.max(0, itemCount.value - 1)
+        useMessageStore().addPreparedMessage(PreparedMessage.UPDATE_SUCCESS)
+        emit('changed')
+    }).catch((err: any) => {
+        useMessageStore().addError(ErrorMessageType.UPDATE_ERROR, err)
+    }).finally(() => {
+        removingId.value = null
     })
 }
 </script>

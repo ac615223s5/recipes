@@ -1534,6 +1534,7 @@ export interface ApiInventoryEntryListRequest {
     inventoryLocationId?: number;
     page?: number;
     pageSize?: number;
+    recipes?: string;
     stale?: boolean;
 }
 
@@ -1748,6 +1749,7 @@ export interface ApiMealPlanListRequest {
     page?: number;
     pageSize?: number;
     toDate?: string;
+    undated?: boolean;
 }
 
 export interface ApiMealPlanPartialUpdateRequest {
@@ -10712,6 +10714,10 @@ export class ApiApi extends runtime.BaseAPI {
             queryParameters['page_size'] = requestParameters['pageSize'];
         }
 
+        if (requestParameters['recipes'] != null) {
+            queryParameters['recipes'] = requestParameters['recipes'];
+        }
+
         if (requestParameters['stale'] != null) {
             queryParameters['stale'] = requestParameters['stale'];
         }
@@ -12424,6 +12430,10 @@ export class ApiApi extends runtime.BaseAPI {
 
         if (requestParameters['toDate'] != null) {
             queryParameters['to_date'] = requestParameters['toDate'];
+        }
+
+        if (requestParameters['undated'] != null) {
+            queryParameters['undated'] = requestParameters['undated'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

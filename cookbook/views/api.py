@@ -869,6 +869,7 @@ class InventoryLocationViewSet(LoggingMixin, viewsets.ModelViewSet, DeleteRelati
     OpenApiParameter(name='food_id', description=_('Returns all entries with the given food id'), type=int),
     OpenApiParameter(name='inventory_location_id', description=_('Returns all entries with the given inventory location id'), type=int),
     OpenApiParameter(name='stale', description=_('If true only return entries that have not been verified within their verification interval.'), type=bool),
+    OpenApiParameter(name='recipes', description=_('Comma separated list of recipe ids. Returns entries whose food is used by any of those recipes.'), type=str),
 ]))
 class InventoryEntryViewSet(LoggingMixin, viewsets.ModelViewSet, DeleteRelationMixing):
     queryset = InventoryEntry.objects
@@ -895,6 +896,19 @@ class InventoryEntryViewSet(LoggingMixin, viewsets.ModelViewSet, DeleteRelationM
 
             if inventory_location_id := self.request.query_params.get('inventory_location_id'):
                 queryset = queryset.filter(inventory_location_id=inventory_location_id)
+
+            if recipes := self.request.query_params.get('recipes'):
+                try:
+                    recipe_ids = [int(r) for r in recipes.split(',') if r.strip()]
+                except ValueError:
+                    recipe_ids = []
+                if recipe_ids:
+                    food_ids = Ingredient.objects.filter(
+                        step__recipe__in=recipe_ids, space=self.request.space, food__isnull=False
+                    ).values_list('food_id', flat=True).distinct()
+                    queryset = queryset.filter(food_id__in=food_ids)
+                else:
+                    queryset = queryset.none()
 
             if str2bool(self.request.query_params.get('stale', False)):
                 # staleness depends on a per-food interval falling back to the space default, so evaluate
@@ -1510,6 +1524,7 @@ MealPlanViewQueryParameters = [
     OpenApiParameter(name='meal_type',
                      description=_('Filter meal plans with MealType ID. For multiple repeat parameter.'), type=str,
                      many=True),
+    OpenApiParameter(name='undated', description=_('If true only return meal plans without a date (cook plan entries).'), type=bool),
 ]
 
 
@@ -1526,13 +1541,17 @@ class MealPlanViewSet(LoggingMixin, viewsets.ModelViewSet):
                                         Q(created_by_id__in=get_household_user_ids(self.request.user_space))).filter(
             space=self.request.space).distinct().all()
 
-        from_date = self.request.query_params.get('from_date', timezone.now() - datetime.timedelta(days=90))
-        if from_date is not None:
-            queryset = queryset.filter(to_date__date__gte=from_date)
+        if str2bool(self.request.query_params.get('undated', False)):
+            # cook plan entries have no date and are intentionally excluded from the calendar date filters below
+            queryset = queryset.filter(from_date__isnull=True)
+        else:
+            from_date = self.request.query_params.get('from_date', timezone.now() - datetime.timedelta(days=90))
+            if from_date is not None:
+                queryset = queryset.filter(to_date__date__gte=from_date)
 
-        to_date = self.request.query_params.get('to_date', timezone.now() + datetime.timedelta(days=360))
-        if to_date is not None:
-            queryset = queryset.filter(to_date__date__lte=to_date)
+            to_date = self.request.query_params.get('to_date', timezone.now() + datetime.timedelta(days=360))
+            if to_date is not None:
+                queryset = queryset.filter(to_date__date__lte=to_date)
 
         meal_type = self.request.query_params.getlist('meal_type', [])
         if meal_type:
@@ -3439,6 +3458,10 @@ def meal_plans_to_ical(queryset, filename):
     cal.add('version', TANDOOR_VERSION)
 
     for p in queryset:
+        if not p.from_date:
+            # undated cook plan entries have no calendar representation
+            continue
+
         event = Event()
         event['uid'] = f'mealplan-{p.id}@tandoor.recipes'
 

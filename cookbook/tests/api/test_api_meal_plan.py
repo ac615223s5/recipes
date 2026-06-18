@@ -57,6 +57,17 @@ def obj_3(space_1, recipe_1_s1, meal_type, u1_s1):
                                    created_by=auth.get_user(u1_s1))
 
 
+@pytest.fixture
+def obj_undated(space_1, recipe_1_s1, meal_type, u1_s1):
+    # a cook plan entry: a meal plan with no date
+    return MealPlan.objects.create(recipe=recipe_1_s1,
+                                   space=space_1,
+                                   meal_type=meal_type,
+                                   from_date=None,
+                                   to_date=None,
+                                   created_by=auth.get_user(u1_s1))
+
+
 @pytest.mark.parametrize("arg", [
     ['a_u', 403],
     ['g1_s1', 200],
@@ -326,6 +337,65 @@ def test_create_date_only_gets_noon_default(u1_s1, recipe_1_s1, meal_type):
     assert local_from.minute == 0
     assert local_to.hour == 12
     assert local_to.minute == 0
+
+
+def test_create_undated_mealplan(u1_s1, recipe_1_s1, meal_type):
+    """A cook plan entry can be created without a date or explicit meal type, reusing an existing meal type."""
+    r = u1_s1.post(reverse(LIST_URL), {
+        'recipe': {'id': recipe_1_s1.id, 'name': recipe_1_s1.name, 'keywords': []},
+        'servings': 1,
+        'title': '',
+        'shared': []
+    }, content_type='application/json')
+    assert r.status_code == 201
+    response = json.loads(r.content)
+    assert response['from_date'] is None
+    assert response['to_date'] is None
+    with scopes_disabled():
+        mp = MealPlan.objects.get(pk=response['id'])
+        assert mp.from_date is None
+        assert mp.to_date is None
+        # meal type is a required FK, so it must be defaulted to a meal type in the space
+        assert mp.meal_type_id == meal_type.id
+
+
+def test_create_undated_mealplan_no_meal_type(u1_s1, recipe_1_s1, space_1):
+    """A cook plan entry can be created in a space that has no meal types yet (one is auto-created)."""
+    with scopes_disabled():
+        assert MealType.objects.filter(space=space_1).count() == 0
+    r = u1_s1.post(reverse(LIST_URL), {
+        'recipe': {'id': recipe_1_s1.id, 'name': recipe_1_s1.name, 'keywords': []},
+        'servings': 1,
+        'title': '',
+        'shared': []
+    }, content_type='application/json')
+    assert r.status_code == 201
+    response = json.loads(r.content)
+    with scopes_disabled():
+        mp = MealPlan.objects.get(pk=response['id'])
+        assert mp.from_date is None
+        assert mp.meal_type_id is not None
+        # a default meal type was created for the space
+        assert MealType.objects.filter(space=space_1).count() == 1
+
+
+def test_list_undated_filter(u1_s1, obj_1, obj_undated):
+    """undated=true returns only cook plan entries; the default (calendar) query excludes them."""
+    undated = json.loads(u1_s1.get(f'{reverse(LIST_URL)}?undated=true').content)['results']
+    assert {p['id'] for p in undated} == {obj_undated.id}
+
+    dated = json.loads(u1_s1.get(reverse(LIST_URL)).content)['results']
+    assert {p['id'] for p in dated} == {obj_1.id}
+
+
+def test_ical_skips_undated(u1_s1, obj_1, obj_undated):
+    """undated cook plan entries have no calendar representation and must not break the ical export."""
+    r = u1_s1.get(f'{reverse(ICAL_URL)}')
+    assert r.status_code == 200
+    cal = Calendar.from_ical(r.getvalue().decode('UTF-8'))
+    events = cal.walk('VEVENT')
+    assert len(events) == 1
+    assert events[0]['uid'] == f'mealplan-{obj_1.id}@tandoor.recipes'
 
 
 def test_token_permissions(u1_s1, obj_1):
