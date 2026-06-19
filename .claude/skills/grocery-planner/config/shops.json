@@ -1,0 +1,46 @@
+{
+  "_comment": "Shops to search. None of these grocers has a usable public price API for Canada (the US-only SerpApi/Scavio Walmart APIs do not cover walmart.ca), and direct page fetches are blocked by bot defenses. Each shop is searched with WebSearch and the website search URL below is used to build the buy link. For structured data behind bot-walls, use a browser-automation tool (see references/shop-apis.md).",
+  "region": "CA",
+  "shops": [
+    {
+      "id": "walmart",
+      "name": "Walmart",
+      "region": "CA",
+      "website": "https://www.walmart.ca",
+      "search_url": "https://www.walmart.ca/en/search?q={query}",
+      "product_url_hint": "https://www.walmart.ca/en/ip/{product_id}",
+      "api": {
+        "enabled": false,
+        "notes": "No usable consumer price API for walmart.ca. The SerpApi and Scavio Walmart APIs are US (walmart.com) only and do not cover Canada. Direct fetches are blocked (HTTP 418). Use WebSearch (Canada-correct) or a session-carrying browser-automation tool."
+      }
+    },
+    {
+      "id": "tnt",
+      "name": "T&T Supermarket",
+      "region": "CA",
+      "website": "https://www.tntsupermarket.com",
+      "search_url": "https://www.tntsupermarket.com/eng/catalogsearch/result/?q={query}",
+      "product_url_hint": "",
+      "api": {
+        "enabled": false,
+        "base_url": "",
+        "key_env": "TNT_API_KEY",
+        "notes": "No public API. Online store is region/delivery-zone gated; verify the search_url for your locale."
+      }
+    },
+    {
+      "id": "costco",
+      "name": "Costco",
+      "region": "CA",
+      "website": "https://www.costco.ca",
+      "search_url": "https://www.costco.ca/CatalogSearch?keyword={query}",
+      "product_url_hint": "",
+      "api": {
+        "enabled": false,
+        "base_url": "",
+        "key_env": "COSTCO_API_KEY",
+        "notes": "No public API. Many items are warehouse-only and not listed online; treat online results as a subset."
+      }
+    }
+  ]
+}
