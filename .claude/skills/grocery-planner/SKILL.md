@@ -8,6 +8,42 @@ description: Plan a grocery run from a Tandoor instance. Reads the Cook Plan, it
 Turn what's planned (Cook Plan + shopping list) and what's on hand (pantry) into a concrete, link-by-link buy list across Walmart, T&T Supermarket, and Costco — after checking the pantry for substitutions and asking the user to decide.
 
 ## 0. Prerequisites (check first)
+
+**First-time setup (do once):**
+1. **Memory file** — the skill reads/writes `memory/preferences.md`, which is gitignored (personal).
+   Create it from the tracked template:
+   ```bash
+   cp memory/preferences.md.example memory/preferences.md
+   ```
+2. **Credentials** — export your Tandoor connection. The token needs **read + write** scope (web UI →
+   Settings → API → Access Tokens):
+   ```bash
+   export TANDOOR_URL="https://your-tandoor.example"   # no trailing slash
+   export TANDOOR_TOKEN="tda_…"
+   ```
+3. **Playwright (browser automation) for live prices** — set up the Playwright MCP per the "working
+   setup" in `references/shop-apis.md`: headed full Chromium (`--browser chromium`, **no**
+   `--headless`) with `env: {"DISPLAY": ":0"}`, and a `~/.claude/playwright-mcp-config.json` with an
+   `outputDir` **outside any git repo** plus the launch flags that keep the headed browser responsive
+   while backgrounded:
+   ```json
+   {
+     "outputDir": "/home/<user>/.cache/playwright-mcp",
+     "browser": {
+       "launchOptions": {
+         "args": [
+           "--disable-renderer-backgrounding",
+           "--disable-background-timer-throttling",
+           "--disable-backgrounding-occluded-windows"
+         ]
+       }
+     }
+   }
+   ```
+   Config changes take effect on the next MCP restart. Without it, the skill falls back to WebSearch
+   (say so when it does).
+
+Ongoing prerequisites:
 - `curl` and `jq` available.
 - Env vars set: `TANDOOR_URL` (default `http://localhost:8000`) and `TANDOOR_TOKEN`.
   - The token is an **OAuth2 access token**: Tandoor web UI → Settings → API → Access Tokens. If `TANDOOR_TOKEN` is unset, the scripts error out — tell the user how to create one rather than guessing.

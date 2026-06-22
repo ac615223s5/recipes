@@ -25,10 +25,25 @@ A plain script/`WebFetch` cannot reach walmart.ca/T&T (418/403). A real browser 
 `mcp__playwright__browser_*` tools aren't loaded, or there's no `~/.claude/playwright-mcp-config.json`,
 set it up first (or fall back to WebSearch and say so):
 - `~/.claude/playwright-mcp-config.json` should exist and include **`"outputDir": "<dir outside any repo>"`**
-  (e.g. `~/.cache/playwright-mcp`). Playwright MCP defaults its output (console logs + page snapshots) to
-  the **current working directory** — if cwd is a git repo, it litters a `.playwright-mcp/` folder into it.
-  Setting `outputDir` keeps those artifacts out of the project. Config changes take effect on the next
-  MCP server restart.
+  (e.g. `~/.cache/playwright-mcp`) plus the launch flags that keep the headed browser responsive while
+  backgrounded:
+  ```json
+  {
+    "outputDir": "/home/<user>/.cache/playwright-mcp",
+    "browser": {
+      "launchOptions": {
+        "args": [
+          "--disable-renderer-backgrounding",
+          "--disable-background-timer-throttling",
+          "--disable-backgrounding-occluded-windows"
+        ]
+      }
+    }
+  }
+  ```
+  Playwright MCP defaults its output (console logs + page snapshots) to the **current working directory**
+  — if cwd is a git repo, it litters a `.playwright-mcp/` folder into it. Setting `outputDir` keeps those
+  artifacts out of the project. Config changes take effect on the next MCP server restart.
 - The launch args / `DISPLAY` above must be present (headed full Chromium), or the grocers' bot defenses
   return 403/Access-Denied.
 

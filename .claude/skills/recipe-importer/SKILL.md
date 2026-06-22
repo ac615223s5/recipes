@@ -14,6 +14,21 @@ does not intelligently merge "crushed garlic" into your existing "garlic", look 
 new food, or add unit conversions. That judgment is the work here.
 
 ## 0. Prerequisites
+
+**First-time setup (do once):**
+1. **Memory file** — the skill reads/writes `memory/import-notes.md`, which is gitignored (personal).
+   Create it from the tracked template:
+   ```bash
+   cp memory/import-notes.md.example memory/import-notes.md
+   ```
+2. **Credentials** — export your Tandoor connection. The token needs **read + write** scope (web UI →
+   Settings → API → Access Tokens):
+   ```bash
+   export TANDOOR_URL="https://your-tandoor.example"   # no trailing slash
+   export TANDOOR_TOKEN="tda_…"
+   ```
+
+Ongoing prerequisites:
 - `curl` + `jq` available. Env: `TANDOOR_URL` (default `http://localhost:8000`) and `TANDOOR_TOKEN`
   (web UI → Settings → API → Access Tokens). If the token is unset the scripts error — tell the user
   how to make one, don't guess. All paths below are relative to this skill directory.

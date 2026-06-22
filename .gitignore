@@ -96,3 +96,7 @@ docs/reference/
 .idea/vcs.xml
 .idea/db-forest-config.xml
 uv.lock
+
+# Skill memory: live working copies are personal/local; the .md.example templates are tracked
+.claude/skills/recipe-importer/memory/import-notes.md
+.claude/skills/grocery-planner/memory/preferences.md
