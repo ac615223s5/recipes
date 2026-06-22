@@ -24,7 +24,7 @@
 
             <v-select v-model="searchPreferences.search" :items="searchMethods" :label="$t('Method')"></v-select>
 
-            <v-checkbox v-model="searchPreferences.lookup" :label="$t('Fuzzy')" persistent-hint :hint="$t('FuzzySearchHelp')" class="mb-4"></v-checkbox>
+            <v-checkbox v-model="searchPreferences.lookup" :label="$t('FuzzyLookup')" persistent-hint :hint="$t('FuzzyLookupHelp')" class="mb-4"></v-checkbox>
             <v-number-input v-model="searchPreferences.trigramThreshold" :precision="2" :min="0.01" :max="1" :step="0.1" :label="$t('TrigramThreshold')" persistent-hint
                             :hint="$t('TrigramThresholdHelp')"></v-number-input>
 

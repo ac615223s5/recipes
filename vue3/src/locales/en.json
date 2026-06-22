@@ -294,6 +294,8 @@
   "FulltextHelp": "Fields to full text search.  Note: 'web', 'phrase', and 'raw' search methods only function with fulltext fields.",
   "Fuzzy": "Fuzzy",
   "FuzzySearchHelp": "Use fuzzy search to find entries even when there are differences in how the word is written.",
+  "FuzzyLookup": "Fuzzy food, unit & keyword search",
+  "FuzzyLookupHelp": "Use typo-tolerant fuzzy matching when searching foods, units, keywords and supermarket categories (e.g. ingredient and shopping autocompletes). Does not affect recipe search, which is configured by the fields below.",
   "GettingStarted": "Getting Started",
   "Global": "Global",
   "GlobalHelp": "Global AI Providers can be used by users of all spaces. They can only be created and edited by superusers. ",
