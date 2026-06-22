@@ -1541,10 +1541,18 @@ class MealPlanViewSet(LoggingMixin, viewsets.ModelViewSet):
                                         Q(created_by_id__in=get_household_user_ids(self.request.user_space))).filter(
             space=self.request.space).distinct().all()
 
+        # Date / undated / meal_type filtering is a calendar-listing concern only. Detail actions
+        # (retrieve/update/destroy) must resolve a plan by id regardless of its date — otherwise an
+        # undated cook-plan entry (to_date is NULL) or a dated plan outside the default window 404s.
+        if self.action not in ('list', 'ical'):
+            return queryset
+
         if str2bool(self.request.query_params.get('undated', False)):
             # cook plan entries have no date and are intentionally excluded from the calendar date filters below
             queryset = queryset.filter(from_date__isnull=True)
         else:
+            # the calendar only deals with dated plans; undated cook-plan entries never belong here
+            queryset = queryset.filter(from_date__isnull=False)
             from_date = self.request.query_params.get('from_date', timezone.now() - datetime.timedelta(days=90))
             if from_date is not None:
                 queryset = queryset.filter(to_date__date__gte=from_date)
