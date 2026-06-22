@@ -117,6 +117,11 @@ export type Model = {
 
     isAdvancedDelete: boolean | undefined,
     isPaginated: boolean | undefined,
+    // The model's list API filters by the `query` param server-side (incl. fuzzy/fulltext), so the
+    // ModelSelect dropdown must NOT re-filter results client-side (that would hide fuzzy/multi-word
+    // matches the server returned). Models without this rely on @vueform/multiselect's local
+    // filterResults to narrow as the user types.
+    serverSearch?: boolean | undefined,
     isMerge?: boolean | undefined,
     mergeAutomation?: string | AutomationTypeEnum,
     isTree?: boolean | undefined,
@@ -215,6 +220,7 @@ export type EditorSupportedTypes =
 
 export const TFood = {
     name: 'Food',
+    serverSearch: true,
     localizationKey: 'Food',
     localizationKeyDescription: 'FoodHelp',
     icon: 'fa-solid fa-carrot',
@@ -239,6 +245,7 @@ registerModel(TFood)
 
 export const TUnit = {
     name: 'Unit',
+    serverSearch: true,
     localizationKey: 'Unit',
     localizationKeyDescription: 'UnitHelp',
     icon: 'fa-solid fa-scale-balanced',
@@ -261,6 +268,7 @@ registerModel(TUnit)
 
 export const TKeyword = {
     name: 'Keyword',
+    serverSearch: true,
     localizationKey: 'Keyword',
     localizationKeyDescription: 'KeywordHelp',
     icon: 'fa-solid fa-tags',
@@ -283,6 +291,7 @@ registerModel(TKeyword)
 
 export const TRecipe = {
     name: 'Recipe',
+    serverSearch: true,
     localizationKey: 'Recipe',
     localizationKeyDescription: 'RecipeHelp',
     icon: 'fa-solid fa-book',
@@ -420,6 +429,7 @@ registerModel(TRecipeBookEntry)
 
 export const TCustomFilter = {
     name: 'CustomFilter',
+    serverSearch: true,
     localizationKey: 'SavedSearch',
     localizationKeyDescription: 'SavedSearchHelp',
     icon: 'fa-solid fa-filter',
@@ -482,6 +492,7 @@ registerModel(TGroup)
 
 export const TSupermarket = {
     name: 'Supermarket',
+    serverSearch: true,
     localizationKey: 'Supermarket',
     localizationKeyDescription: 'SupermarketHelp',
     icon: 'fa-solid fa-store',
@@ -501,6 +512,7 @@ registerModel(TSupermarket)
 
 export const TSupermarketCategory = {
     name: 'SupermarketCategory',
+    serverSearch: true,
     localizationKey: 'Category',
     localizationKeyDescription: 'SupermarketCategoryHelp',
     icon: 'fa-solid fa-boxes-stacked',
@@ -626,6 +638,7 @@ registerModel(TUnitConversion)
 
 export const TUserFile = {
     name: 'UserFile',
+    serverSearch: true,
     localizationKey: 'File',
     localizationKeyDescription: 'UserFileHelp',
     icon: 'fa-solid fa-file',
