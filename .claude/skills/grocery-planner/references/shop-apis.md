@@ -10,7 +10,7 @@
 
 > Tested June 2026: WebSearch returned direct walmart.ca product links + CAD prices (e.g. Great Value 100% Apple Juice 1L ≈ CAD $1.68). WebFetch of walmart.ca returned **418** and T&T returned **403** — i.e. plain fetches/naive scrapers are refused.
 
-## Default strategy: WebSearch (no keys, Canada-correct)
+## Fallback strategy: WebSearch (no keys, Canada-correct)
 For each item to buy, per shop:
 1. `WebSearch` for `"<shop> <item> price <region>"` (add brand/size from `memory/preferences.md`). For Walmart, also try `"<item> walmart.ca /en/ip"` to get a **direct product link**.
 2. Build the **buy link** from the result: prefer a direct product URL WebSearch surfaced; otherwise the shop's `search_url` from `config/shops.json` (replace `{query}` with the URL-encoded item). `scripts/shop_search.sh <shop> "<item>"` returns that search link for you.
