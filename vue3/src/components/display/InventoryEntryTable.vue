@@ -110,7 +110,6 @@ const tableHeaders = computed(() => {
     return props.cookMode ? headers.filter(h => h.key !== 'code') : headers
 })
 
-
 /**
  * load inventory data based on current props
  */
@@ -136,6 +135,9 @@ function loadItems(options: VDataTableUpdateOptions) {
 
     page.value = options.page
     pageSize.value = options.itemsPerPage
+
+    parameters.page = options.page
+    parameters.pageSize = options.itemsPerPage
 
     api.apiInventoryEntryList(parameters).then((r: any) => {
         items.value = r.results

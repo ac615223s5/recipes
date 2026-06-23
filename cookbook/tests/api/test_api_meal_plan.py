@@ -388,6 +388,20 @@ def test_list_undated_filter(u1_s1, obj_1, obj_undated):
     assert {p['id'] for p in dated} == {obj_1.id}
 
 
+def test_detail_undated_mealplan(u1_s1, obj_undated):
+    """Detail actions (retrieve/update/destroy) must resolve an undated cook-plan entry by id.
+    Regression: the calendar date filter is list-only; applying it to get_object() 404'd undated
+    plans (to_date is NULL), breaking the cook plan's 'mark complete' delete."""
+    detail = reverse(DETAIL_URL, args=[obj_undated.id])
+
+    assert u1_s1.get(detail).status_code == 200
+
+    r = u1_s1.delete(detail)
+    assert r.status_code == 204
+    with scopes_disabled():
+        assert not MealPlan.objects.filter(id=obj_undated.id).exists()
+
+
 def test_ical_skips_undated(u1_s1, obj_1, obj_undated):
     """undated cook plan entries have no calendar representation and must not break the ical export."""
     r = u1_s1.get(f'{reverse(ICAL_URL)}')

@@ -27,6 +27,20 @@
         "key_env": "TNT_API_KEY",
         "notes": "No public API. Online store is region/delivery-zone gated; verify the search_url for your locale."
       }
+    },
+    {
+      "id": "costco",
+      "name": "Costco",
+      "region": "CA",
+      "website": "https://www.costco.ca",
+      "search_url": "https://www.costco.ca/CatalogSearch?keyword={query}",
+      "product_url_hint": "",
+      "api": {
+        "enabled": false,
+        "base_url": "",
+        "key_env": "COSTCO_API_KEY",
+        "notes": "No public API. Many items are warehouse-only and not listed online; treat online results as a subset."
+      }
     }
   ]
 }

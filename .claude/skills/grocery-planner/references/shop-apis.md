@@ -10,7 +10,7 @@
 
 > Tested June 2026: WebSearch returned direct walmart.ca product links + CAD prices (e.g. Great Value 100% Apple Juice 1L ≈ CAD $1.68). WebFetch of walmart.ca returned **418** and T&T returned **403** — i.e. plain fetches/naive scrapers are refused.
 
-## Fallback strategy: WebSearch (no keys, Canada-correct)
+## Default strategy: WebSearch (no keys, Canada-correct)
 For each item to buy, per shop:
 1. `WebSearch` for `"<shop> <item> price <region>"` (add brand/size from `memory/preferences.md`). For Walmart, also try `"<item> walmart.ca /en/ip"` to get a **direct product link**.
 2. Build the **buy link** from the result: prefer a direct product URL WebSearch surfaced; otherwise the shop's `search_url` from `config/shops.json` (replace `{query}` with the URL-encoded item). `scripts/shop_search.sh <shop> "<item>"` returns that search link for you.
@@ -25,10 +25,25 @@ A plain script/`WebFetch` cannot reach walmart.ca/T&T (418/403). A real browser 
 `mcp__playwright__browser_*` tools aren't loaded, or there's no `~/.claude/playwright-mcp-config.json`,
 set it up first (or fall back to WebSearch and say so):
 - `~/.claude/playwright-mcp-config.json` should exist and include **`"outputDir": "<dir outside any repo>"`**
-  (e.g. `~/.cache/playwright-mcp`). Playwright MCP defaults its output (console logs + page snapshots) to
-  the **current working directory** — if cwd is a git repo, it litters a `.playwright-mcp/` folder into it.
-  Setting `outputDir` keeps those artifacts out of the project. Config changes take effect on the next
-  MCP server restart.
+  (e.g. `~/.cache/playwright-mcp`) plus the launch flags that keep the headed browser responsive while
+  backgrounded:
+  ```json
+  {
+    "outputDir": "/home/<user>/.cache/playwright-mcp",
+    "browser": {
+      "launchOptions": {
+        "args": [
+          "--disable-renderer-backgrounding",
+          "--disable-background-timer-throttling",
+          "--disable-backgrounding-occluded-windows"
+        ]
+      }
+    }
+  }
+  ```
+  Playwright MCP defaults its output (console logs + page snapshots) to the **current working directory**
+  — if cwd is a git repo, it litters a `.playwright-mcp/` folder into it. Setting `outputDir` keeps those
+  artifacts out of the project. Config changes take effect on the next MCP server restart.
 - The launch args / `DISPLAY` above must be present (headed full Chromium), or the grocers' bot defenses
   return 403/Access-Denied.
 

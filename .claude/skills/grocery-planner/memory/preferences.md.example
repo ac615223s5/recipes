@@ -1,0 +1,26 @@
+# Grocery preferences & product experiences
+
+This file is the skill's long-term memory. Read it before comparing shops or suggesting substitutions, and append to it after the user makes decisions. Keep entries short and dated (YYYY-MM-DD).
+
+> This is the template. On first use, copy it to `preferences.md` (which is gitignored — your
+> personal preferences stay local):  `cp preferences.md.example preferences.md`
+
+## Dietary constraints / hard rules
+<!-- e.g. no pork; lactose-free milk only; nut allergy (strict) -->
+- (none recorded yet)
+
+## Brand & product preferences
+<!-- food: preferred brand/size, why, and what to avoid -->
+- (none recorded yet)
+
+## Store preferences
+<!-- which shop to favor for which categories, and why -->
+- (none recorded yet)
+
+## Substitution rules
+<!-- "if X is missing/expensive, Y is an acceptable swap" -->
+- (none recorded yet)
+
+## Past experiences (dated log)
+<!-- 2025-01-01 - Costco organic spinach: great value, lasted ~5 days. -->
+- (none recorded yet)

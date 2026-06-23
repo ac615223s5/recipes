@@ -23,6 +23,7 @@
             :label="itemLabel"
             :searchable="true"
             :strict="false"
+            :filter-results="!modelClass.model?.serverSearch"
             :disabled="props.disabled"
             :mode="props.mode"
             :can-clear="props.canClear"

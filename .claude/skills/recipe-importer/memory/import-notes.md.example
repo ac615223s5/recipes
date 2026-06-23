@@ -1,0 +1,35 @@
+# Recipe-import memory
+
+Long-term memory for the recipe-importer skill. Read this **before** reconciling an import so
+choices stay consistent; append to it **after** an import. Keep entries short and dated (YYYY-MM-DD).
+
+> This is the template. On first use, copy it to `import-notes.md` (which is gitignored — your
+> personal/learned content stays local):  `cp import-notes.md.example import-notes.md`
+
+## Food normalizations (source name → DB food, + where descriptor went)
+<!-- e.g. 2026-06-19 - "crushed garlic" / "minced garlic" / "garlic clove" → food **garlic**, prep → note -->
+- (none recorded yet)
+
+## Foods kept SEPARATE (do not merge — different store items)
+<!-- e.g. tomato / tomato sauce / tomato paste / sun-dried tomato are four different foods -->
+- (none recorded yet)
+
+## Unit spellings folded into an existing unit
+<!-- e.g. "T" / "Tbsp" / "tablespoon(s)" → unit **tbsp** -->
+- (none recorded yet)
+
+## New units created + conversions added
+<!-- e.g. 2026-06-19 - created unit "clove"; food-specific: 1 clove garlic = 5 g -->
+- (none recorded yet)
+
+## New foods created (name → category, fdc_id, nutrition source)
+<!-- e.g. 2026-06-19 - "shallot" → Produce, FDC 11677, USDA per-100g -->
+- (none recorded yet)
+
+## Category assignments (food → supermarket category)
+<!-- helps future foods land in the right aisle / shopping group -->
+- (none recorded yet)
+
+## Keyword-matching notes
+<!-- e.g. keyword "Weeknight" (desc: quick <30min) — attach when working_time <= 30 -->
+- (none recorded yet)
