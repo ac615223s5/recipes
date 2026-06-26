@@ -135,6 +135,8 @@ function loadItems(options: VDataTableUpdateOptions) {
 
     page.value = options.page
     pageSize.value = options.itemsPerPage
+    // persist the chosen page size so it survives reloads (shared general tables preference)
+    useUserPreferenceStore().deviceSettings.general_tableItemsPerPage = options.itemsPerPage
 
     parameters.page = options.page
     parameters.pageSize = options.itemsPerPage
