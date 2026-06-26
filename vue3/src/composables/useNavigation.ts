@@ -45,6 +45,7 @@ export function useNavigation() {
             {component: VListItem, prependIcon: 'fa-solid fa-folder-tree', title: t('Database'), to: {name: 'DatabasePage', params: {}}},
             {component: VListItem, prependIcon: '$search', title: t('Search'), to: {name: 'SearchPage', params: {}}},
             {component: VListItem, prependIcon: '$pantry', title: t('Pantry'), to: {name: 'PantryPage', params: {}}},
+            {component: VListItem, prependIcon: 'fa-solid fa-utensils', title: t('CookPlan'), to: {name: 'CookPlanPage', params: {}}},
             {component: VListItem, prependIcon: '$books', title: t('Books'), to: {name: 'BooksPage', params: {}}},
             {component: VListItem, prependIcon: 'fa-solid fa-chart-simple', title: t('Stats'), to: {name: 'StatsPage', params: {}}},
         ]
