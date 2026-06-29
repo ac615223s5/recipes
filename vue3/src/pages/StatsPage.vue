@@ -38,6 +38,8 @@
                             :loading="loading"
                             :item-key="groupBy.value !== 'none' ? 'title' : 'id'"
                             :sort-by="[{ key: 'createdAt', order: 'desc' }]"
+                            :items-per-page="pageSize"
+                            @update:items-per-page="pageSize = $event; useUserPreferenceStore().deviceSettings.general_tableItemsPerPage = $event"
                         >
                             <!-- Date column -->
                             <template #item.createdAt="{ item }">
@@ -268,9 +270,12 @@ import { onMounted, ref, computed, watch } from "vue"
 import { ApiApi, CookLog } from "@/openapi"
 import { DateTime } from "luxon"
 import { useMessageStore, ErrorMessageType } from "@/stores/MessageStore"
+import { useUserPreferenceStore } from "@/stores/UserPreferenceStore"
 import ModelEditDialog from "@/components/dialogs/ModelEditDialog.vue"
 
 const loading = ref(false)
+// shared general tables preference, persisted to localStorage so the footer selection survives reloads
+const pageSize = ref(useUserPreferenceStore().deviceSettings.general_tableItemsPerPage)
 const cookLogs = ref<CookLog[]>([])
 const editDialog = ref(false)
 const editingItem = ref<CookLog | null>(null)
