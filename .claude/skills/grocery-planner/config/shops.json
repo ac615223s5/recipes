@@ -10,8 +10,10 @@
       "search_url": "https://www.walmart.ca/en/search?q={query}",
       "product_url_hint": "https://www.walmart.ca/en/ip/{product_id}",
       "api": {
-        "enabled": false,
-        "notes": "No usable consumer price API for walmart.ca. The SerpApi and Scavio Walmart APIs are US (walmart.com) only and do not cover Canada. Direct fetches are blocked (HTTP 418). Use WebSearch (Canada-correct) or a session-carrying browser-automation tool."
+        "enabled": true,
+        "type": "nextdata",
+        "script": "scripts/walmart_search.py",
+        "notes": "No documented API; parse the page's embedded __NEXT_DATA__ JSON. Plain curl/WebFetch blocked (418 Akamai TLS fingerprint); reach it with curl_cffi impersonate=chrome (no browser). Use scripts/walmart_search.py search|product. Search is headless; product pages need a homepage warm-up (script does it) and can occasionally hit a Press-&-Hold challenge -> fall back to headed browser. nutritionFacts often null (use USDA); ingredients/specs populated. SerpApi/Scavio Walmart APIs are US-only. See references/shop-apis.md."
       }
     },
     {
@@ -19,13 +21,14 @@
       "name": "T&T Supermarket",
       "region": "CA",
       "website": "https://www.tntsupermarket.com",
-      "search_url": "https://www.tntsupermarket.com/eng/catalogsearch/result/?q={query}",
-      "product_url_hint": "",
+      "search_url": "https://www.tntsupermarket.com/eng/search.html?query={query}",
+      "product_url_hint": "https://www.tntsupermarket.com/eng/{url_key}.html",
       "api": {
-        "enabled": false,
-        "base_url": "",
-        "key_env": "TNT_API_KEY",
-        "notes": "No public API. Online store is region/delivery-zone gated; verify the search_url for your locale."
+        "enabled": true,
+        "type": "graphql",
+        "base_url": "https://www.tntsupermarket.com/graphql",
+        "script": "scripts/tnt_graphql.py",
+        "notes": "Internal Magento GraphQL (no auth, CAD). Blocked to plain curl by Akamai TLS fingerprinting (403); reach it with curl_cffi impersonate=chrome (no browser/proxy). Use scripts/tnt_graphql.py search|product. BEST source of the three grocers. Nutrition is image-only, not structured. See references/shop-apis.md."
       }
     },
     {
