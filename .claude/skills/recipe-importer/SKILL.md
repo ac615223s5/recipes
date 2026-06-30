@@ -13,28 +13,31 @@ The value of this skill is the **reconciliation layer** — Tandoor's importer p
 does not intelligently merge "crushed garlic" into your existing "garlic", look up nutrition for a
 new food, or add unit conversions. That judgment is the work here.
 
+> **Premade / packaged item?** (frozen meal, candy, snack, drink, restaurant/takeout dish — no real
+> ingredient list, or the user says "don't add ingredients"): the steps below don't fit. Follow
+> **`references/premade-items.md`** instead — no ingredient foods, nutrition goes on the recipe as
+> `properties` (per-serving values; Tandoor shows total = amount × `servings`), and the label often
+> has to be read out of package photos via the browser.
+
+> **Food vs recipe — which (or both)?** These are different objects; pick by how the item is used:
+> - **Food** (`create-food`) = a *store item / ingredient* — something used **as an ingredient in
+>   recipes** (or a shopping-list/pantry entry). Nutrition lives on the food, per 100 g. e.g. "Baby
+>   Carrots" so it can stand in for "Carrot" in other recipes.
+> - **Recipe** (`create-recipe`, premade flow) = something **consumed as-is / a portion you eat** —
+>   a snack, packaged product, or dish. Nutrition lives on the recipe as per-serving `properties`.
+>   e.g. "Yogurt (Yoplait creamy 1%, Walmart)" eaten by the cup.
+> - **Both** when an item is eaten directly *and* used as an ingredient — create the food **and** a
+>   premade recipe (e.g. baby carrots: snack recipe + substitutable food). When unsure which the
+>   user wants, **ask** (a recipe is not a food and won't appear in food-matching).
+> - **Reconcile before creating either:** search existing recipes (`get /api/recipe/?query=`) and
+>   foods (`food-search`) — enrich a sparse existing entry in place rather than making a duplicate.
+
 ## 0. Prerequisites
-
-**First-time setup (do once):**
-1. **Memory file** — the skill reads/writes `memory/import-notes.md`, which is gitignored (personal).
-   Create it from the tracked template:
-   ```bash
-   cp memory/import-notes.md.example memory/import-notes.md
-   ```
-2. **Credentials** — export your Tandoor connection. The token needs **read + write** scope (web UI →
-   Settings → API → Access Tokens):
-   ```bash
-   export TANDOOR_URL="https://your-tandoor.example"   # no trailing slash
-   export TANDOOR_TOKEN="tda_…"
-   ```
-
-Ongoing prerequisites:
-- `curl` + `jq` available. Env: `TANDOOR_URL` (default `http://localhost:8000`) and `TANDOOR_TOKEN`
-  (web UI → Settings → API → Access Tokens). If the token is unset the scripts error — tell the user
-  how to make one, don't guess. All paths below are relative to this skill directory.
-- The token needs **read + write** scope. A token scoped only `mealplan` (or read-only) returns **403**
-  on every call — if you see 403s, the scope is the cause; tell the user to recreate the token with
-  read+write.
+Setup (Tandoor credentials persisted in Claude Code's `env` block, plus the Playwright MCP browser used
+for reading package labels — see `references/premade-items.md`) lives in the **`tandoor-setup` skill**.
+Go there if `curl`/`jq` are missing, `TANDOOR_URL`/`TANDOOR_TOKEN` are unset, or a call 401/403s (a
+read-only / `mealplan`-scoped token 403s — this skill needs **read + write**). All paths below are
+relative to this skill directory.
 
 ## 1. Get the parsed recipe
 - **From a URL:** `bash scripts/tandoor.sh from-url "<url>"`. This calls Tandoor's scraper

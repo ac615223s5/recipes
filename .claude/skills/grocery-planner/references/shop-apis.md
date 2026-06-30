@@ -36,6 +36,14 @@ python scripts/tnt_graphql.py raw '<gql query>' '<json vars>'  # escape hatch fo
 (was), `on_sale`, `stock`, `image`, and the product `url`. `product` adds `gallery` (product
 photos), `content_images` (marketing/spec/**nutrition** images), `breadcrumbs`, `info`, and `rating`.
 
+**Store-scoping (price/availability vary by store).** T&T scopes results to a store via request
+**headers**, not the query — `x-prefered-store-code`, `x-postcode`, `x-current-shipping-method`,
+`content-currency`, `store`. The script sends a Greater-Toronto default (`x-prefered-store-code: UV`,
+`x-postcode: L3T`, delivery); a *valid* store code changes `total_count`/availability (an invalid one
+returns 0 results). Override per call with `--store-code <CODE> --postcode <FSA>` for another location.
+The same headers work from the browser fetch (below) — confirmed they shift availability (e.g. "egg":
+174 items store-scoped vs 169 national).
+
 ### Reading nutrition facts from T&T (it works — via image OCR)
 T&T has **no structured nutrition fields**, but it *does* publish the **Nutrition Facts panel as an
 image** in `content_images` (and an ingredients/specs image alongside). You can read it:
@@ -61,7 +69,9 @@ yourself. Bump `--page-size` (e.g. 40) to load enough to filter.
 - Prices: `price_range.minimum_price.final_price.value` (sale) vs `price.regularPrice.amount.value` / `was_price` (regular).
 - Images: `small_image.url` is ready-to-use; gallery = `https://www.tntsupermarket.com/media/catalog/product` + `media_gallery_entries[].file`.
 - Categories: `route(url:"…path….html"){...on CategoryInterface{uid}}` → `products(filter:{category_uid:{eq:$uid}})`.
-- **Nutrition is image-only** — not a structured field, but published as a JPG in `new_description.list` (`type:"IMAGE"`) → exposed by the script as `content_images`. Readable via the `images` command + vision OCR (see "Reading nutrition facts" above).
+- Weighed items: `uom_type:2` + `weight_uom:"lb"` means priced by the pound. Product link = `https://www.tntsupermarket.com/eng/<url_key><url_suffix>`.
+- Other ops seen in traffic: `getProductFiltersBySearch` (facets/aggregations), `categoryList`/`getMegaMenu` (category tree), `ResolveURL` (path→id).
+- **Nutrition is image-only** — not a structured field, but published as a JPG in `new_description.list` (`type:"IMAGE"`) → exposed by the script as `content_images`. Readable via the `images` command + vision OCR (see "Reading nutrition facts" above). To put those numbers on a Tandoor recipe/food, see recipe-importer's `references/premade-items.md`.
 
 ## Walmart — search & product via `__NEXT_DATA__` (the good path; mostly headless)
 
@@ -120,33 +130,11 @@ headless shell.** Tested June 2026: with `--headless` (chrome-headless-shell) Ak
 both. (For Walmart product pages, read `__NEXT_DATA__` in the browser — same JSON shape the script
 parses: `initialData.data.{product,idml,reviews}`.)
 
-**Config that works** (`~/.claude.json` → mcpServers.playwright): `args: ["-y","@playwright/mcp@latest","--browser","chromium","--config","/home/<user>/.claude/playwright-mcp-config.json"]` (NO `--headless`), `env: {"DISPLAY": ":0"}`. Browsers install without root: `npx -y playwright install chromium` (and `npx -y @playwright/mcp@latest install-browser chrome-for-testing` if asked). A real browser window appears during runs (headed) — that's required to beat the bot defenses. First browser action prompts for permission.
-
-**Before the first browser action this run, check the config is set up — don't assume.** If the
-`mcp__playwright__browser_*` tools aren't loaded, or there's no `~/.claude/playwright-mcp-config.json`,
-set it up first (or fall back to WebSearch and say so):
-- `~/.claude/playwright-mcp-config.json` should exist and include **`"outputDir": "<dir outside any repo>"`**
-  (e.g. `~/.cache/playwright-mcp`) plus the launch flags that keep the headed browser responsive while
-  backgrounded:
-  ```json
-  {
-    "outputDir": "/home/<user>/.cache/playwright-mcp",
-    "browser": {
-      "launchOptions": {
-        "args": [
-          "--disable-renderer-backgrounding",
-          "--disable-background-timer-throttling",
-          "--disable-backgrounding-occluded-windows"
-        ]
-      }
-    }
-  }
-  ```
-  Playwright MCP defaults its output (console logs + page snapshots) to the **current working directory**
-  — if cwd is a git repo, it litters a `.playwright-mcp/` folder into it. Setting `outputDir` keeps those
-  artifacts out of the project. Config changes take effect on the next MCP server restart.
-- The launch args / `DISPLAY` above must be present (headed full Chromium), or the grocers' bot defenses
-  return 403/Access-Denied.
+**Setup lives in the `tandoor-setup` skill (§2)** — registering the headed-Chromium Playwright MCP and
+the `~/.claude/playwright-mcp-config.json` (with an `outputDir` outside any git repo). **Before the
+first browser action, verify it's up (don't assume):** `claude mcp get playwright` shows Connected and
+the `mcp__playwright__browser_*` tools are loaded. If not, set it up there first, or fall back to
+WebSearch and say so.
 
 **Recipe — Walmart (FALLBACK — prefer `scripts/walmart_search.py`; use this only if curl_cffi is challenged):**
 1. `browser_navigate` to the product page `https://www.walmart.ca/en/ip/<slug>/<id>` (get the link from WebSearch, e.g. `"<item> walmart.ca /en/ip"`).
@@ -159,13 +147,35 @@ set it up first (or fall back to WebSearch and say so):
    ```
    → e.g. `{price:1.68, currency:"CAD", availability:"InStock"}`.
 
-**Recipe — T&T (FALLBACK ONLY — prefer `scripts/tnt_graphql.py` above; use this browser path only if curl_cffi is unavailable):**
-1. `browser_navigate` straight to `https://www.tntsupermarket.com/eng/search.html?query=<broad term>` (works directly). **Set the "* Location" (`#region`) first** if you need store-accurate prices — results render without it but prices/availability vary by store. (If you start on `/`, reveal the box via `[...document.querySelectorAll('button')].find(b=>/fakeinput/i.test(b.className)).click()`, then `browser_type` into `#search` with `submit:true`.)
-2. **Scroll to load everything** before scraping — results lazy-load, so the first render is only a partial page:
+**Recipe — T&T browser fallback (same GraphQL, via the browser — prefer `scripts/tnt_graphql.py`; use
+this only if curl_cffi is unavailable).** Plain `curl` to `/graphql` gets Akamai 403, but a
+**same-origin `fetch` from inside a loaded T&T page** (run via `browser_evaluate`) returns the same
+clean JSON the script does — no scrolling, no card scraping. One `ProductSearch` call returns every
+result.
+1. `browser_navigate` to any T&T page so the browser holds the Akamai cookies, e.g.
+   `https://www.tntsupermarket.com/eng/search.html?query=<broad term>`.
+2. `browser_evaluate` this fetch (set `pageSize` high to get all items in one call):
    ```js
-   async () => { let last=0; for (let i=0;i<15;i++){ window.scrollTo(0,document.body.scrollHeight); await new Promise(r=>setTimeout(r,700)); const n=document.querySelectorAll('a[href$=".html"]').length; if(n===last&&i>3)break; last=n; } }
+   async () => {
+     const body = { operationName:"ProductSearch",
+       variables:{currentPage:1, pageSize:100, filters:{}, inputText:"shrimp", sort:{relevance:"DESC"}},
+       query:"query ProductSearch($currentPage:Int=1 $inputText:String! $pageSize:Int=6 $filters:ProductAttributeFilterInput! $sort:ProductAttributeSortInput){products(currentPage:$currentPage pageSize:$pageSize search:$inputText filter:$filters sort:$sort){items{sku name stock_status url_key url_suffix uom_type weight_uom price_range{minimum_price{final_price{value currency}}} small_image{url}}total_count page_info{total_pages current_page}}}" };
+     const r = await fetch("/graphql", { method:"POST", headers:{
+       "content-type":"application/json", "store":"default", "content-currency":"CAD",
+       "x-prefered-store-code":"UV", "x-postcode":"L3T", "x-current-shipping-method":"delivery"
+     }, body: JSON.stringify(body) });
+     return (await r.json()).data.products;   // {items:[...], total_count, page_info}
+   }
    ```
-3. Scrape product cards: anchors `a[href$=".html"]` like `/eng/<id>-<slug>.html`, with the `$price` in the nearest container, then **filter locally** (see gotchas below). e.g. *Ocean Jewel Frozen Raw White Shrimp P&D 31/40 — $8.99 — /eng/74190301-oj-raw-white-shrimp-p-d31-40.html*.
+   - **Store-accurate pricing = the request headers** (same as the script): `x-prefered-store-code` +
+     `x-postcode` (+ `x-current-shipping-method`, `content-currency`). `UV`/`L3T` is a GTA default;
+     change them for another location. No login needed (guest).
+   - Product link = `https://www.tntsupermarket.com/eng/<url_key><url_suffix>`. Price =
+     `price_range.minimum_price.final_price`. `uom_type:2`+`weight_uom:"lb"` = priced by the pound.
+   - Then **filter locally** over the JSON (see gotchas below) — clean fields, not scraped tiles.
+   - **Last-ditch DOM scrape** (only if the GraphQL shape changes / fetch refused): scroll the
+     `search.html` page to lazy-load all `a[href$=".html"]` cards (`/eng/<id>-<slug>.html`) and read the
+     nearest `$price`. e.g. *Ocean Jewel Frozen Raw White Shrimp P&D 31/40 — $8.99*.
 
 **Costco**: same idea (`browser_navigate` to `CatalogSearch?keyword=`), but warehouse-only items aren't online.
 

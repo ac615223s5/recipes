@@ -28,7 +28,7 @@
         "type": "graphql",
         "base_url": "https://www.tntsupermarket.com/graphql",
         "script": "scripts/tnt_graphql.py",
-        "notes": "Internal Magento GraphQL (no auth, CAD). Blocked to plain curl by Akamai TLS fingerprinting (403); reach it with curl_cffi impersonate=chrome (no browser/proxy). Use scripts/tnt_graphql.py search|product. BEST source of the three grocers. Nutrition is image-only, not structured. See references/shop-apis.md."
+        "notes": "Internal Magento GraphQL (no auth, CAD). Blocked to plain curl by Akamai TLS fingerprinting (403); reach it with curl_cffi impersonate=chrome (no browser/proxy). Use scripts/tnt_graphql.py search|product|images. Price/availability are store-scoped via request headers (GTA default; override --store-code/--postcode). BEST source of the three grocers. Nutrition is image-only, not structured (script's images cmd → vision OCR). See references/shop-apis.md."
       }
     },
     {

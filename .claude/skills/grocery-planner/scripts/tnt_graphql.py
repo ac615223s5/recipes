@@ -8,11 +8,12 @@ User-Agent or replayed cookies are NOT enough. The trick is `curl_cffi` with
 proxy, no warm-up request needed -- a cold GraphQL GET returns clean JSON.
 
 Endpoint: https://www.tntsupermarket.com/graphql  (GET, url-encoded query/variables)
-Currency: CAD. Prices are national online prices (a store/region can differ slightly).
+Currency: CAD. Price/availability are STORE-SCOPED via request headers (see STORE below) —
+defaults to a Greater-Toronto store; pass --store-code / --postcode for another location.
 
 Setup (once):  uv pip install curl_cffi    (or: .venv/bin/pip install curl_cffi)
 
-Usage:
+Usage (any command also takes --store-code <CODE> --postcode <FSA>):
   python tnt_graphql.py search "tofu" [--page-size 10]   # search products
   python tnt_graphql.py product 73156801-tnt-fresh-tofu  # detail by url_key OR sku
   python tnt_graphql.py images  73156801-tnt-fresh-tofu [outdir]  # download all imgs as JPEG
@@ -42,6 +43,12 @@ IMG_BASE = BASE + "/media/catalog/product"  # + media_gallery_entries[].file
 IMPERSONATE = "chrome"  # alias -> latest Chrome fingerprint curl_cffi supports
 JPEG_ACCEPT = "image/jpeg,image/png,*/*;q=0.8"  # avoid AVIF default (vision can't read it)
 
+# T&T scopes price/availability to a store via REQUEST HEADERS (not the query). A valid store code
+# changes total_count/availability; an invalid one returns 0 results. Default = Greater-Toronto;
+# override with --store-code / --postcode. (These ride along on every GraphQL call.)
+STORE = {"x-prefered-store-code": "UV", "x-postcode": "L3T",
+         "x-current-shipping-method": "delivery", "content-currency": "CAD", "store": "default"}
+
 
 def gql(query, variables=None, operation=None):
     """Run one GraphQL GET. Returns the parsed `data` dict; raises on errors."""
@@ -51,7 +58,7 @@ def gql(query, variables=None, operation=None):
         params["operationName"] = operation
     if variables is not None:
         params["variables"] = json.dumps(variables)
-    r = s.get(GQL, params=params, timeout=30)
+    r = s.get(GQL, params=params, headers=STORE, timeout=30)
     if r.status_code != 200:
         raise SystemExit(f"HTTP {r.status_code}: {r.text[:300]}")
     body = r.json()
@@ -163,6 +170,11 @@ def main():
     a = sys.argv[1:]
     if not a:
         sys.exit(__doc__)
+    # global store-scoping overrides (apply to every command)
+    if "--store-code" in a:
+        STORE["x-prefered-store-code"] = a[a.index("--store-code") + 1]
+    if "--postcode" in a:
+        STORE["x-postcode"] = a[a.index("--postcode") + 1]
     cmd = a[0]
     if cmd == "search":
         if len(a) < 2:
@@ -178,7 +190,7 @@ def main():
     elif cmd == "images":
         if len(a) < 2:
             sys.exit("usage: tnt_graphql.py images <url_key|sku> [outdir]")
-        outdir = a[2] if len(a) > 2 else "tnt_images"
+        outdir = a[2] if len(a) > 2 and not a[2].startswith("--") else "tnt_images"
         print(json.dumps(cmd_images(a[1], outdir), indent=2, ensure_ascii=False))
     elif cmd == "raw":
         variables = json.loads(a[2]) if len(a) > 2 else None
