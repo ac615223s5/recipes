@@ -8,46 +8,10 @@ description: Plan a grocery run from a Tandoor instance. Reads the Cook Plan, it
 Turn what's planned (Cook Plan + shopping list) and what's on hand (pantry) into a concrete, link-by-link buy list across Walmart, T&T Supermarket, and Costco — after checking the pantry for substitutions and asking the user to decide.
 
 ## 0. Prerequisites (check first)
-
-**First-time setup (do once):**
-1. **Memory file** — the skill reads/writes `memory/preferences.md`, which is gitignored (personal).
-   Create it from the tracked template:
-   ```bash
-   cp memory/preferences.md.example memory/preferences.md
-   ```
-2. **Credentials** — export your Tandoor connection. The token needs **read + write** scope (web UI →
-   Settings → API → Access Tokens):
-   ```bash
-   export TANDOOR_URL="https://your-tandoor.example"   # no trailing slash
-   export TANDOOR_TOKEN="tda_…"
-   ```
-3. **Playwright (browser automation) for live prices** — set up the Playwright MCP per the "working
-   setup" in `references/shop-apis.md`: headed full Chromium (`--browser chromium`, **no**
-   `--headless`) with `env: {"DISPLAY": ":0"}`, and a `~/.claude/playwright-mcp-config.json` with an
-   `outputDir` **outside any git repo** plus the launch flags that keep the headed browser responsive
-   while backgrounded:
-   ```json
-   {
-     "outputDir": "/home/<user>/.cache/playwright-mcp",
-     "browser": {
-       "launchOptions": {
-         "args": [
-           "--disable-renderer-backgrounding",
-           "--disable-background-timer-throttling",
-           "--disable-backgrounding-occluded-windows"
-         ]
-       }
-     }
-   }
-   ```
-   Config changes take effect on the next MCP restart. Without it, the skill falls back to WebSearch
-   (say so when it does).
-
-Ongoing prerequisites:
-- `curl` and `jq` available.
-- Env vars set: `TANDOOR_URL` (default `http://localhost:8000`) and `TANDOOR_TOKEN`.
-  - The token is an **OAuth2 access token**: Tandoor web UI → Settings → API → Access Tokens. If `TANDOOR_TOKEN` is unset, the scripts error out — tell the user how to create one rather than guessing.
-- Paths below are relative to this skill directory.
+Setup (Tandoor credentials + the Playwright MCP browser) lives in the **`tandoor-setup` skill** — see
+it if `curl`/`jq` are missing, `TANDOOR_URL`/`TANDOOR_TOKEN` are unset, a call 401/403s, or the
+`mcp__playwright__browser_*` tools aren't loaded. Quick check: `TANDOOR_TOKEN` set and
+`bash scripts/tandoor.sh cookplan` returns JSON. Paths below are relative to this skill directory.
 
 ## 1. Read the planning data (bash)
 Run the helper (it returns JSON; read it, don't dump raw to the user):
@@ -74,15 +38,28 @@ Treat shelf-stable staples already in the pantry (salt, oil, sugar, soy sauce, e
 Before searching any shop, for each needed item check whether the pantry already holds an acceptable substitute (same food, a close variant, or a staple per the substitution rules in `memory/preferences.md`). Present the candidates and **ask the user to decide** (use the AskUserQuestion tool, one question per non-obvious swap, or a single grouped set). Never silently substitute. Record the outcome for step 6.
 
 ## 4. Compare price & quality across shops
-Read `config/shops.json` and `references/shop-apis.md` first. None of these grocers has a usable public price API for Canada, and plain fetches are blocked (418/403). Two ways to get prices:
+Read `config/shops.json` and `references/shop-apis.md` first. No grocer has a *documented* price API, but T&T and Walmart are fully reachable — their "blocks" are just Akamai TLS/JA3 fingerprinting, which a Chrome-impersonating client defeats. Pick the method in this order:
 
-**Preferred — browser automation (live Canadian prices) if the `mcp__playwright__browser_*` tools are available.** Follow the proven recipes in `references/shop-apis.md`:
-- **Walmart**: WebSearch for the `walmart.ca/en/ip/...` link → `browser_navigate` → `browser_evaluate` the JSON-LD `Offer` (price/currency/availability).
-- **T&T**: `browser_navigate` the homepage → set Location (`#region`) if you need store-accurate prices → click the `fakeinput` button to reveal `#search` → `browser_type` (submit) → scrape `/eng/<id>-<slug>.html` product cards.
-- Requires the headed full-Chromium setup (a browser window appears); if the tools aren't loaded, fall back to web search.
-- **First, verify the Playwright config is set up (don't assume).** If `~/.claude/playwright-mcp-config.json` is missing — especially its `outputDir` (kept outside any git repo so it doesn't litter `.playwright-mcp/` into the project) — or the headed-Chromium launch args / `DISPLAY` aren't configured, set it up per the "Browser automation: the working setup" section of `references/shop-apis.md` before browsing (or fall back to WebSearch and say so).
+**Preferred — the `curl_cffi` scripts (headless, no browser, clean JSON).** Needs `uv pip install curl_cffi` once. These return live, store-scoped prices.
+- **T&T** — internal Magento **GraphQL** (best of the three; prices store-scoped via headers the script sends — GTA default, overridable):
+  ```bash
+  python scripts/tnt_graphql.py search "tofu" --page-size 20      # → total_count + tidied items
+  python scripts/tnt_graphql.py product 73156801-tnt-fresh-tofu    # detail by url_key OR sku
+  python scripts/tnt_graphql.py images  <url_key|sku> <outdir>     # nutrition-label images → OCR
+  ```
+- **Walmart** — parses the page's embedded `__NEXT_DATA__` JSON:
+  ```bash
+  python scripts/walmart_search.py search "tofu" --all-pages       # headless
+  python scripts/walmart_search.py product 206880                  # ingredients/specs/price
+  ```
+- **Costco**: no script yet — use the browser or WebSearch below.
+Field lists, store headers, pagination, and nutrition-image OCR are in `references/shop-apis.md`.
 
-**Fallback — WebSearch.** For Walmart it's Canada-correct and surfaces direct `/en/ip/...` links with CAD prices; for T&T/Costco usually only a search link. Build the buy link via:
+**Fallback — browser automation** (when a script is blocked — e.g. a Walmart **Press-&-Hold** challenge: solve it once in the headed browser, then re-run the script — for **Costco**, or interactive flows). Needs the headed full-Chromium Playwright MCP; **verify it's set up (don't assume)** — `claude mcp get playwright` Connected and the `mcp__playwright__browser_*` tools loaded; if not, set it up via the **`tandoor-setup` skill** (§2) or skip to WebSearch and say so. Proven recipes in `references/shop-apis.md`:
+- **Walmart**: `browser_navigate` to `https://www.walmart.ca/en/search?q=<broad term>`, scroll to load ALL results, scrape every tile, then `browser_evaluate` the chosen product's `__NEXT_DATA__`/JSON-LD `Offer`. Search is literal — if a term underperforms ("baby carrots" → baby food), retry the broad term ("carrots").
+- **T&T**: `browser_navigate` a T&T page (for Akamai cookies), then `browser_evaluate` a same-origin `fetch('/graphql', …)` `ProductSearch` — same store-scoping headers the script uses. DOM scraping is the last-ditch fallback.
+
+**Last resort — WebSearch.** For Walmart it's Canada-correct and surfaces direct `/en/ip/...` links with CAD prices; for T&T/Costco usually only a search link. Build the buy link via:
 ```bash
 bash scripts/shop_search.sh walmart "apple juice 1L"   # returns the walmart.ca search link
 bash scripts/shop_search.sh tnt     "bok choy"
@@ -91,13 +68,13 @@ bash scripts/shop_search.sh costco  "rice 10kg"
 **Matching a specific product (e.g. "raw peeled shrimp, no tail"):** search a BROAD head term (`shrimp`), scroll to load ALL results, then filter locally with synonyms (`peeled`↔`P&D`, `tail off`↔`T/off`) and exclude near-misses (`cooked`, `easy-peel`/`EZ peel` = shell-on, `breaded`). **Confirm attributes from the product's own description, not the tile/carousel** — "easy-peel" ≠ "peeled". If an attribute isn't stated, report it as unspecified rather than assuming. (Details + the gotchas that motivated this: `references/shop-apis.md`.)
 
 For each item, per shop (Walmart, T&T, Costco):
-- find current price + a representative product (size/brand), consulting `memory/preferences.md`;
+- **search the store and compare the full result set — never settle on the first hit.** Surface the realistic options (sizes/brands) and pick the winner on price/quality, consulting `memory/preferences.md`;
 - normalize price to a comparable unit (per 100 g / per unit / per L) before picking a winner — pack sizes differ, especially Costco bulk;
 - note quality signals the user cares about (brand, organic, freshness).
-State plainly that prices are **web-search estimates as of today**, not live API quotes, and vary by location/availability. If a shop's `api.enabled` is true, use that API and fall back to web search on error.
+Be honest about the source: prices from the **scripts/browser GraphQL are live, store-scoped quotes** (still note the store/postal they're scoped to); prices from **WebSearch are estimates as of today** that vary by location. If a shop's `api.enabled` is true, use that script/API and fall back to browser → WebSearch on error.
 
 ## 5. Output the buy list
-Factor each store's **delivery/shipping fee from `memory/preferences.md`** (currently T&T $5, Walmart $9) into the basket total — a per-item price win can flip once shipping is added, so prefer **consolidating a run to one store** to pay the fee once (and check free-shipping thresholds). Show the per-store subtotal + fee + all-in total.
+Factor each store's **delivery/shipping fee from `memory/preferences.md`** (currently T&T $5 over $59 min, Walmart free over $35 min) into the basket total — a per-item price win can flip once shipping is added, so prefer **consolidating a run to one store** to pay the fee once (and check free-shipping thresholds). Show the per-store subtotal + fee + all-in total.
 Produce a clear table / list, grouped by shop, with one clickable **link per item** (deep product link if found, else the `search_url` with the URL-encoded query). For each item include: chosen shop, product/size, price (and normalized price), why it won (price/quality/preference), and any substitution applied. End with a short summary (estimated total, items skipped because already in pantry, replacements due to expiry/staleness).
 
 ## 6. Update memory
